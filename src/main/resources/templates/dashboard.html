@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language == 'en' ? 'en' : 'zh-CN'}">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="#{dashboard.title}">CertForge · 总览</title><link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body data-page="dashboard">
+<div th:replace="~{fragments :: topbar('dashboard')}"></div>
+<div class="app-shell"><div th:replace="~{fragments :: sidebar('dashboard')}"></div>
+<main class="main-content">
+    <section class="page-heading">
+        <div><p class="eyebrow" th:text="#{dashboard.eyebrow}">YOUR CERTIFICATION WORKSPACE</p><h1 th:text="#{dashboard.heading}">准备好继续了吗？</h1>
+            <p class="muted" th:text="#{dashboard.description}">用短练习建立稳定的答题手感，所有学习记录都保存在本机。</p></div>
+        <a class="button primary" th:href="@{/review}" th:text="#{dashboard.start}">开始练习 →</a>
+    </section>
+    <section class="course-banner">
+        <div class="course-icon">AWS<br><small>AI</small></div>
+        <div><p class="eyebrow light" th:text="#{dashboard.activeBank}">ACTIVE QUESTION BANK</p><h2 th:text="${metadata.title}">AWS Certified Generative AI Developer - Professional</h2>
+            <p><span class="pill dark" th:text="${metadata.code}">AIP-C01</span> <span class="banner-meta" th:text="${metadata.questionCount + ' ' + #messages.msg('dashboard.questionCount')}">117 道题 · Markdown source</span></p></div>
+    </section>
+    <section class="stats-grid" th:attr="aria-label=#{dashboard.stats}">
+        <div class="stat-card"><span class="stat-label" th:text="#{dashboard.total}">题库总数</span><strong th:text="${progress.total}">117</strong><span class="stat-icon blue">#</span></div>
+        <div class="stat-card"><span class="stat-label" th:text="#{dashboard.attempted}">已答题</span><strong th:text="${progress.attempted}">0</strong><span class="stat-icon violet">↗</span></div>
+        <div class="stat-card"><span class="stat-label" th:text="#{dashboard.currentCorrect}">当前答对</span><strong th:text="${progress.correct}">0</strong><span class="stat-icon green">✓</span></div>
+        <div class="stat-card"><span class="stat-label" th:text="#{dashboard.currentIncorrect}">当前答错</span><strong th:text="${progress.incorrect}">0</strong><span class="stat-icon red">!</span></div>
+        <div class="stat-card"><span class="stat-label" th:text="#{dashboard.accuracy}">正确率</span><strong th:text="${progress.accuracy + '%'}">0.0%</strong><span class="stat-icon amber">%</span></div>
+        <div class="stat-card"><span class="stat-label" th:text="#{dashboard.starred}">星标题</span><strong th:text="${progress.starred}">0</strong><span class="stat-icon yellow">★</span></div>
+    </section>
+    <section class="dashboard-grid">
+        <div class="panel progress-panel">
+            <div class="panel-heading"><div><p class="eyebrow" th:text="#{dashboard.progress}">PROGRESS</p><h2 th:text="#{dashboard.progressTitle}">学习进度</h2></div><span class="percentage" th:text="${progress.accuracy + '%'}">0.0%</span></div>
+            <div class="progress-track"><div class="progress-fill" th:style="|width: ${progress.total == 0 ? 0 : (progress.attempted * 100 / progress.total)}%|"></div></div>
+            <div class="progress-legend"><span><i class="dot blue"></i><span th:text="#{dashboard.answered}">已答</span> <b th:text="${progress.attempted}">0</b></span><span><i class="dot green"></i><span th:text="#{common.correct}">答对</span> <b th:text="${progress.correct}">0</b></span><span><i class="dot gray"></i><span th:text="#{dashboard.unanswered}">未答</span> <b th:text="${progress.unanswered}">117</b></span></div>
+            <div class="panel-actions"><a class="text-link" th:href="@{/study}" th:text="#{dashboard.browse}">浏览题库 →</a><a class="text-link" th:if="${hasContinue}" th:href="@{/review}" th:text="#{dashboard.continue}">继续上次练习 →</a></div>
+        </div>
+        <div class="panel modes-panel"><div class="panel-heading"><div><p class="eyebrow" th:text="#{dashboard.modes}">PRACTICE MODES</p><h2 th:text="#{dashboard.chooseMode}">选择练习方式</h2></div></div>
+            <a class="mode-row" th:href="@{/study}"><span class="mode-symbol book">▤</span><span><strong th:text="#{nav.study}">背题模式</strong><small th:text="#{dashboard.studySubtitle}">直接查看答案与社区投票 →</small></span><b>→</b></a>
+            <a class="mode-row" th:href="@{/review}"><span class="mode-symbol check">✓</span><span><strong th:text="#{nav.review}">即时答题</strong><small th:text="#{dashboard.reviewSubtitle}">提交后获得即时反馈 →</small></span><b>→</b></a>
+            <a class="mode-row" th:href="@{/exam}"><span class="mode-symbol timer">◷</span><span><strong th:text="#{nav.exam}">模拟考试</strong><small th:text="#{dashboard.examSubtitle}">不看答案，最后统一评分 →</small></span><b>→</b></a>
+            <a class="mode-row" th:href="@{/wrong}"><span class="mode-symbol wrong">↻</span><span><strong th:text="#{nav.wrong}">错题复习</strong><small th:text="#{dashboard.wrongSubtitle}">集中巩固曾经答错的题目 →</small></span><b>→</b></a>
+        </div>
+    </section>
+    <p class="footer-note"><span th:text="#{dashboard.source}">题库解析自 Markdown：</span><code th:text="${metadata.sourceFile}">classpath:/question-bank/AWS_AIP-C01_bilingual.md</code></p>
+</main></div>
+<script th:src="@{/js/app.js}"></script>
+</body></html>

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<header th:fragment="topbar(active)" class="topbar">
+    <a class="brand" th:href="@{/}"><span class="brand-mark">CF</span><span>CertForge</span></a>
+    <div class="topbar-actions">
+        <span class="header-course" th:text="#{header.course}">AIP-C01 · 本地学习空间</span>
+        <div class="language-switch" th:attr="aria-label=#{language.switch}">
+            <button type="button" data-language="zh" th:classappend="${#locale.language != 'en'} ? 'active' : ''" th:text="#{language.zh}">中文</button>
+            <button type="button" data-language="en" th:classappend="${#locale.language == 'en'} ? 'active' : ''" th:text="#{language.en}">English</button>
+        </div>
+        <button class="icon-button" id="theme-toggle" type="button" th:attr="aria-label=#{theme.toggle}">◐</button>
+    </div>
+</header>
+<aside th:fragment="sidebar(active)" class="sidebar">
+    <div class="sidebar-label" th:text="#{sidebar.mode}">学习模式</div>
+    <nav class="nav-list" aria-label="主导航">
+        <a th:href="@{/}" th:classappend="${active == 'dashboard'} ? 'active'"><span>⌂</span><span th:text="#{nav.dashboard}">总览</span></a>
+        <a th:href="@{/study}" th:classappend="${active == 'study'} ? 'active'"><span>📖</span><span th:text="#{nav.study}">背题模式</span></a>
+        <a th:href="@{/review}" th:classappend="${active == 'review'} ? 'active'"><span>✓</span><span th:text="#{nav.review}">即时答题</span></a>
+        <a th:href="@{/exam}" th:classappend="${active == 'exam'} ? 'active'"><span>⏱</span><span th:text="#{nav.exam}">模拟考试</span></a>
+        <a th:href="@{/wrong}" th:classappend="${active == 'wrong'} ? 'active'"><span>✕</span><span th:text="#{nav.wrong}">错题复习</span></a>
+        <a th:href="@{/starred}" th:classappend="${active == 'starred'} ? 'active'"><span>★</span><span th:text="#{nav.starred}">我的星标</span></a>
+    </nav>
+    <div class="sidebar-note">
+        <span class="note-dot"></span>
+        <div><strong th:text="#{sidebar.localFirst}">Local first</strong><br><small th:text="#{sidebar.localNote}">记录保存在本机 H2 数据库</small></div>
+    </div>
+</aside>
+</body>
+</html>
