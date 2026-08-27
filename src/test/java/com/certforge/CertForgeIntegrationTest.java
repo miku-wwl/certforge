@@ -2,6 +2,7 @@ package com.certforge;
 
 import com.certforge.repository.AttemptRepository;
 import com.certforge.repository.QuestionProgressRepository;
+import com.certforge.service.QuestionExplanationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +28,7 @@ class CertForgeIntegrationTest {
     @Autowired WebApplicationContext applicationContext;
     @Autowired QuestionProgressRepository progressRepository;
     @Autowired AttemptRepository attemptRepository;
+    @Autowired QuestionExplanationService explanationService;
     private MockMvc mockMvc;
 
     @BeforeEach
@@ -49,11 +51,23 @@ class CertForgeIntegrationTest {
         assertFalse(before.contains("Correct Answer"));
         assertFalse(before.contains("正确答案"));
         assertFalse(before.contains("58%"));
+        assertFalse(before.contains("考点背景"));
+        assertFalse(before.contains("data-answer-reveal"));
+        assertTrue(before.contains("data-copy-question"));
+        assertTrue(before.contains("复制题目"));
 
-        String after = mockMvc.perform(post("/review/check").session(session).param("answers", "C"))
+        mockMvc.perform(post("/review/check").session(session).param("answers", "C"))
+                .andExpect(redirectedUrl("/review"));
+        String after = mockMvc.perform(get("/review").session(session))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertTrue(after.contains("正确答案"));
         assertTrue(after.contains("58%"));
+        assertTrue(after.contains("考点背景"));
+        assertTrue(after.contains("场景比喻"));
+        assertTrue(after.contains("explanation-table"));
+        assertTrue(after.contains("data-answer-reveal"));
+        assertFalse(after.contains("data-explanation-modal"));
+        assertFalse(after.contains("role=\"dialog\""));
 
         mockMvc.perform(post("/study/star").param("questionId", "aip-c01-q-1"))
                 .andExpect(status().is3xxRedirection());
@@ -75,6 +89,7 @@ class CertForgeIntegrationTest {
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertTrue(result.contains("本轮成绩"));
         assertTrue(result.contains("正确答案"));
+        assertTrue(result.contains("AI 解析"));
     }
 
     @Test
@@ -84,5 +99,26 @@ class CertForgeIntegrationTest {
         assertTrue(english.contains("A retail company has a generative AI"));
         assertTrue(english.contains("Toggle light/dark mode"));
         assertFalse(english.contains("一家零售公司拥有"));
+
+        MvcResult start = mockMvc.perform(post("/review/start").param("selection", "range").param("range", "1-1"))
+                .andExpect(redirectedUrl("/review")).andReturn();
+        MockHttpSession session = (MockHttpSession) start.getRequest().getSession(false);
+        String englishReview = mockMvc.perform(get("/review").param("lang", "en").session(session))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertTrue(englishReview.contains("Copy question"));
+        assertTrue(englishReview.contains("A retail company has a generative AI"));
+        assertFalse(englishReview.contains("一家零售公司拥有"));
+
+        mockMvc.perform(post("/review/check").session(session).param("answers", "C"))
+                .andExpect(redirectedUrl("/review"));
+        String englishChecked = mockMvc.perform(get("/review").session(session))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertTrue(englishChecked.contains("Exam focus and background"));
+        assertTrue(englishChecked.contains("AWS service roles"));
+    }
+
+    @Test
+    void loadsBilingualAiExplanationsForEveryQuestion() {
+        assertTrue(explanationService.count() == 117);
     }
 }

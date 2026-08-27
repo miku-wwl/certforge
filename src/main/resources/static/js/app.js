@@ -24,7 +24,78 @@
         return target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable);
     }
 
+    function legacyCopy(text) {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.top = '-9999px';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        textarea.setSelectionRange(0, textarea.value.length);
+        let copied = false;
+        try {
+            copied = document.execCommand('copy');
+        } finally {
+            textarea.remove();
+        }
+        return copied;
+    }
+
+    async function copyText(text) {
+        if (navigator.clipboard && window.isSecureContext) {
+            try {
+                await navigator.clipboard.writeText(text);
+                return true;
+            } catch (error) {
+                // Fall back for browsers that expose Clipboard API but deny this call.
+            }
+        }
+        return legacyCopy(text);
+    }
+
+    document.querySelectorAll('[data-copy-question]').forEach(function (button) {
+        button.addEventListener('click', async function () {
+            const card = button.closest('.question-card');
+            const question = card && card.querySelector('.question-text');
+            const options = card ? Array.from(card.querySelectorAll('.option-list .option-row')) : [];
+            const status = button.querySelector('[data-copy-status]');
+            const originalLabel = button.dataset.copyLabel || 'Copy question';
+            let succeeded = false;
+
+            if (question && options.length) {
+                const optionLines = options.map(function (option) {
+                    const label = option.querySelector('.option-label');
+                    const copy = option.querySelector('.option-copy');
+                    return (label ? label.textContent.trim() : '') + '. ' + (copy ? copy.textContent.trim() : '');
+                });
+                const text = question.textContent.trim() + '\n\n' + optionLines.join('\n');
+                succeeded = await copyText(text);
+            }
+
+            button.classList.toggle('copied', succeeded);
+            button.classList.toggle('copy-failed', !succeeded);
+            if (status) {
+                status.textContent = succeeded
+                    ? (button.dataset.copiedLabel || 'Copied')
+                    : (button.dataset.copyFailedLabel || 'Copy failed');
+            }
+            window.clearTimeout(button.copyResetTimer);
+            button.copyResetTimer = window.setTimeout(function () {
+                button.classList.remove('copied', 'copy-failed');
+                if (status) status.textContent = originalLabel;
+            }, 1800);
+        });
+    });
+
     if (body.dataset.page === 'review') {
+        const answerReveal = document.querySelector('[data-answer-reveal]');
+        if (answerReveal) {
+            window.requestAnimationFrame(function () {
+                answerReveal.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        }
         document.addEventListener('keydown', function (event) {
             if (isTypingTarget(event.target)) return;
             const key = event.key.toLowerCase();

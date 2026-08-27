@@ -112,7 +112,8 @@ public class ExamController {
                 .map(answer -> new ExamAnswerReviewDto(
                         questionViewMapper.view(answer.question(), answer.selectedAnswers(), true),
                         answer.selectedAnswers(), questionViewMapper.sorted(answer.question().correctAnswers()),
-                        answer.correct(), answer.answered(), questionViewMapper.votes(answer.question().communityVotes())))
+                        answer.correct(), answer.answered(), questionViewMapper.votes(answer.question().communityVotes()),
+                        questionViewMapper.explanationHtml(answer.question())))
                 .toList();
         model.addAttribute("examResult", new ExamResultPageDto(result.answers().size(), result.correct(), result.incorrect(),
                 result.unanswered(), result.percentage(), result.timeUsedSeconds(), reviews));

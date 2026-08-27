@@ -21,10 +21,16 @@ import java.util.stream.Collectors;
 public class QuestionViewMapper {
     private final ProgressService progressService;
     private final com.certforge.i18n.LanguageContext languageContext;
+    private final QuestionExplanationService questionExplanationService;
+    private final ExplanationMarkdownRenderer explanationRenderer;
 
-    public QuestionViewMapper(ProgressService progressService, com.certforge.i18n.LanguageContext languageContext) {
+    public QuestionViewMapper(ProgressService progressService, com.certforge.i18n.LanguageContext languageContext,
+                              QuestionExplanationService questionExplanationService,
+                              ExplanationMarkdownRenderer explanationRenderer) {
         this.progressService = progressService;
         this.languageContext = languageContext;
+        this.questionExplanationService = questionExplanationService;
+        this.explanationRenderer = explanationRenderer;
     }
 
     public QuestionViewDto review(Question question, Set<String> selected, boolean revealAnswers) {
@@ -38,11 +44,17 @@ public class QuestionViewMapper {
 
     public StudyQuestionDto study(Question question) {
         return new StudyQuestionDto(view(question, Set.of(), true, List.of(), languageContext.current()),
-                sorted(question.correctAnswers()), votes(question.communityVotes()));
+                sorted(question.correctAnswers()), votes(question.communityVotes()), explanationHtml(question));
     }
 
     public CheckResultDto result(Question question, Set<String> selected, boolean correct) {
-        return new CheckResultDto(correct, selected, sorted(question.correctAnswers()), votes(question.communityVotes()));
+        return new CheckResultDto(correct, selected, sorted(question.correctAnswers()), votes(question.communityVotes()),
+                explanationHtml(question));
+    }
+
+    public String explanationHtml(Question question) {
+        String markdown = questionExplanationService.forQuestion(question.questionNumber(), languageContext.current());
+        return explanationRenderer.render(markdown);
     }
 
     public QuestionViewDto view(Question question, Set<String> selected, boolean revealAnswers) {

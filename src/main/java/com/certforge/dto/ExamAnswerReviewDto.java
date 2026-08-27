@@ -10,15 +10,18 @@ public class ExamAnswerReviewDto {
     private final boolean correct;
     private final boolean answered;
     private final List<CommunityVoteDto> communityVotes;
+    private final String aiExplanationHtml;
 
     public ExamAnswerReviewDto(QuestionViewDto question, Set<String> selectedAnswers, List<String> correctAnswers,
-                               boolean correct, boolean answered, List<CommunityVoteDto> communityVotes) {
+                               boolean correct, boolean answered, List<CommunityVoteDto> communityVotes,
+                               String aiExplanationHtml) {
         this.question = question;
         this.selectedAnswers = Set.copyOf(selectedAnswers);
         this.correctAnswers = List.copyOf(correctAnswers);
         this.correct = correct;
         this.answered = answered;
         this.communityVotes = List.copyOf(communityVotes);
+        this.aiExplanationHtml = aiExplanationHtml;
     }
 
     public QuestionViewDto getQuestion() { return question; }
@@ -27,5 +30,6 @@ public class ExamAnswerReviewDto {
     public boolean isCorrect() { return correct; }
     public boolean isAnswered() { return answered; }
     public List<CommunityVoteDto> getCommunityVotes() { return communityVotes; }
+    public String getAiExplanationHtml() { return aiExplanationHtml; }
     public boolean isHasVotes() { return !communityVotes.isEmpty(); }
 }

@@ -91,7 +91,7 @@ public class ReviewController {
 
     @PostMapping("/review/check")
     public String check(@RequestParam(name = "answers", required = false) String[] answers,
-                        HttpSession session, Model model) {
+                        HttpSession session) {
         ReviewState state = requiredState(session);
         Question question = questionBankService.require(state.practiceSession().currentQuestionId());
         String questionId = question.id();
@@ -102,8 +102,7 @@ public class ReviewController {
             progressService.recordAttempt(practiceService.attempt(question, selected, com.certforge.domain.PracticeMode.REVIEW));
             state.checkedResults().put(questionId, correct);
         }
-        render(model, state);
-        return "review";
+        return "redirect:/review";
     }
 
     @PostMapping("/review/next")
