@@ -43,7 +43,7 @@ class CertForgeIntegrationTest {
         mockMvc.perform(get("/")).andExpect(status().isOk());
         mockMvc.perform(get("/study")).andExpect(status().isOk());
 
-        MvcResult start = mockMvc.perform(post("/review/start").param("selection", "range").param("range", "1-1"))
+        MvcResult start = mockMvc.perform(post("/review/start").param("selection", "range").param("range", "1-2"))
                 .andExpect(redirectedUrl("/review")).andReturn();
         MockHttpSession session = (MockHttpSession) start.getRequest().getSession(false);
         String before = mockMvc.perform(get("/review").session(session)).andExpect(status().isOk())
@@ -66,8 +66,15 @@ class CertForgeIntegrationTest {
         assertTrue(after.contains("场景比喻"));
         assertTrue(after.contains("explanation-table"));
         assertTrue(after.contains("data-answer-reveal"));
+        assertTrue(after.contains("下一题 →"));
         assertFalse(after.contains("data-explanation-modal"));
         assertFalse(after.contains("role=\"dialog\""));
+
+        mockMvc.perform(post("/review/next").session(session))
+                .andExpect(redirectedUrl("/review"));
+        String nextQuestion = mockMvc.perform(get("/review").session(session))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertTrue(nextQuestion.contains("第 2 题"));
 
         mockMvc.perform(post("/study/star").param("questionId", "aip-c01-q-1"))
                 .andExpect(status().is3xxRedirection());
