@@ -51,11 +51,12 @@ public class ReviewController {
                          HttpSession session, Model model) {
         if (reset) {
             session.removeAttribute(SESSION_KEY);
+            setupModel(model, filter);
+            return "review-setup";
         }
         ReviewState state = state(session);
         if (state == null || state.practiceSession().size() == 0) {
-            setupModel(model, filter);
-            return "review-setup";
+            state = startDefaultSession(session);
         }
         render(model, state);
         return "review";
@@ -186,6 +187,15 @@ public class ReviewController {
             if (shuffleOptions) java.util.Collections.shuffle(labels);
             session.setOptionOrder(question.id(), labels);
         }
+    }
+
+    private ReviewState startDefaultSession(HttpSession session) {
+        List<Question> questions = questionBankService.all();
+        PracticeSession practiceSession = new PracticeSession(questions.stream().map(Question::id).toList());
+        prepareOptionOrders(practiceSession, questions, false);
+        ReviewState state = new ReviewState(practiceSession);
+        session.setAttribute(SESSION_KEY, state);
+        return state;
     }
 
     private PracticeService.SelectionCriteria criteria(String selection, String range, Integer randomCount, String type,

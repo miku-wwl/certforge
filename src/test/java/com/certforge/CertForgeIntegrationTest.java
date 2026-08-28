@@ -83,6 +83,20 @@ class CertForgeIntegrationTest {
     }
 
     @Test
+    void opensInstantPracticeDirectlyWithoutSetup() throws Exception {
+        String direct = mockMvc.perform(get("/review"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertTrue(direct.contains("第 1 题"));
+        assertTrue(direct.contains("data-copy-question"));
+        assertFalse(direct.contains("设置一轮练习"));
+
+        String setup = mockMvc.perform(get("/review").param("reset", "true"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertTrue(setup.contains("设置一轮练习"));
+        assertFalse(setup.contains("第 1 题"));
+    }
+
+    @Test
     void keepsExamAnswersServerSideUntilSubmit() throws Exception {
         MvcResult start = mockMvc.perform(post("/exam/start").param("number", "2").param("shuffleQuestions", "false"))
                 .andExpect(redirectedUrl("/exam/session")).andReturn();
