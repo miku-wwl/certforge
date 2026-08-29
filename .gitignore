@@ -6,3 +6,4 @@ data/
 *.h2.db
 *.mv.db
 *.trace.db
+tmp
