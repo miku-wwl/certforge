@@ -45,16 +45,28 @@
             <div>
                 <p class="eyebrow" th:text="#{dashboard.dataEyebrow}">LOCAL DATA</p>
                 <h2 th:text="#{dashboard.dataTitle}">本地学习记录</h2>
-                <p class="muted small" th:text="#{dashboard.dataDescription}">导出完整答题记录或清空本地答题数据；题库内容不会删除。</p>
+                <p class="muted small" th:text="#{dashboard.dataDescription}">导出完整答题记录、导入备份或清空本地答题数据；题库内容不会删除。</p>
             </div>
             <div class="data-actions">
                 <a class="button secondary" th:href="@{/data/export.csv}" th:text="#{dashboard.exportRecords}">导出答题情况 CSV</a>
+                <form class="data-import-form" th:action="@{/data/import}" method="post" enctype="multipart/form-data" th:attr="data-import-confirm=#{dashboard.importConfirm}">
+                    <label class="file-input"><span th:text="#{dashboard.chooseCsv}">选择 CSV</span><input type="file" name="file" accept=".csv,text/csv" required></label>
+                    <button class="button secondary" type="submit" th:text="#{dashboard.importRecords}">导入答题情况 CSV</button>
+                </form>
                 <form th:action="@{/data/reset}" method="post" th:attr="data-reset-confirm=#{dashboard.resetConfirm}">
                     <button class="button danger" type="submit" th:text="#{dashboard.resetRecords}">清空本地记录</button>
                 </form>
             </div>
         </div>
         <div class="form-success" th:if="${resetComplete}" role="status" th:text="#{dashboard.resetSuccess}">本地做题记录已清空，题库内容未受影响。</div>
+        <div class="form-success" th:if="${importComplete}" role="status">
+            <span th:text="#{dashboard.importSuccess}">CSV 导入完成。</span>
+            <span> </span><span th:text="${importQuestionCount}">117</span>
+            <span th:text="#{dashboard.importQuestions}">道题状态已恢复</span><span>, </span>
+            <span th:text="${importAttemptCount}">0</span>
+            <span th:text="#{dashboard.importAttempts}">条历史答题记录已恢复</span><span>.</span>
+        </div>
+        <div class="form-error" th:if="${importError}" role="alert" th:text="${importError}"></div>
     </section>
     <p class="footer-note"><span th:text="#{dashboard.source}">题库解析自 Markdown：</span><code th:text="${metadata.sourceFile}">classpath:/question-bank/AWS_AIP-C01_bilingual.md</code></p>
 </main></div>

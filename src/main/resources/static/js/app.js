@@ -28,6 +28,14 @@
         });
     });
 
+    document.querySelectorAll('[data-import-confirm]').forEach(function (form) {
+        form.addEventListener('submit', function (event) {
+            if (!window.confirm(form.getAttribute('data-import-confirm'))) {
+                event.preventDefault();
+            }
+        });
+    });
+
     function isTypingTarget(target) {
         return target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable);
     }

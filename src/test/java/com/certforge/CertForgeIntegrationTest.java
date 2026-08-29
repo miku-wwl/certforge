@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -165,6 +166,33 @@ class CertForgeIntegrationTest {
         assertTrue(csv.contains("aip-c01-q-1"));
         assertTrue(csv.contains("即时答题"));
         assertTrue(csv.contains("一家零售公司拥有"));
+    }
+
+    @Test
+    void importsExportedCsvAndReplacesCurrentAnswerStatus() throws Exception {
+        mockMvc.perform(post("/study/star").param("questionId", "aip-c01-q-1"))
+                .andExpect(status().is3xxRedirection());
+        MvcResult reviewStart = mockMvc.perform(post("/review/start")
+                        .param("selection", "range").param("range", "1-1"))
+                .andExpect(redirectedUrl("/review")).andReturn();
+        MockHttpSession session = (MockHttpSession) reviewStart.getRequest().getSession(false);
+        mockMvc.perform(post("/review/check").session(session).param("answers", "C"))
+                .andExpect(redirectedUrl("/review"));
+        byte[] csv = mockMvc.perform(get("/data/export.csv"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray();
+
+        progressRepository.deleteAll();
+        attemptRepository.deleteAll();
+        assertEquals(0, progressRepository.count());
+        assertEquals(0, attemptRepository.count());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/data/import")
+                        .file(new MockMultipartFile("file", "backup.csv", "text/csv", csv)).session(session))
+                .andExpect(redirectedUrl("/"));
+        assertTrue(progressRepository.findById("aip-c01-q-1").orElseThrow().isStarred());
+        assertTrue(progressRepository.findById("aip-c01-q-1").orElseThrow().isHasAnswered());
+        assertEquals(1, attemptRepository.count());
+        assertNull(session.getAttribute("certforge.review"));
     }
 
     @Test

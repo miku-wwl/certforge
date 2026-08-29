@@ -104,6 +104,9 @@ h3 { font-size: 16px; }
 .data-panel .muted { max-width: 650px; margin-bottom: 0; }
 .data-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
 .data-actions form { flex: 0 0 auto; }
+.data-import-form { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.file-input { min-height: 38px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; display: flex; align-items: center; gap: 7px; color: var(--muted); background: var(--surface); font-size: 11px; }
+.file-input input { max-width: 180px; color: var(--text); font-size: 11px; }
 .form-success { margin-top: 13px; padding: 11px 13px; border-radius: 8px; color: var(--green); background: var(--green-soft); font-size: 12px; }
 .mode-row { min-height: 54px; padding: 9px 0; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 11px; }
 .mode-row > span:nth-child(2) { flex: 1; }.mode-row strong, .mode-row small { display: block; }.mode-row strong { font-size: 13px; }.mode-row small { margin-top: 2px; color: var(--muted); font-size: 11px; }.mode-row > b { color: #a2acba; }.mode-row:hover > b { color: var(--primary); }
