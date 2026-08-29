@@ -20,6 +20,14 @@
         });
     });
 
+    document.querySelectorAll('[data-reset-confirm]').forEach(function (form) {
+        form.addEventListener('submit', function (event) {
+            if (!window.confirm(form.getAttribute('data-reset-confirm'))) {
+                event.preventDefault();
+            }
+        });
+    });
+
     function isTypingTarget(target) {
         return target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable);
     }

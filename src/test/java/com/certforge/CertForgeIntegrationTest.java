@@ -20,6 +20,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
@@ -111,6 +113,36 @@ class CertForgeIntegrationTest {
         assertTrue(result.contains("本轮成绩"));
         assertTrue(result.contains("正确答案"));
         assertTrue(result.contains("AI 解析"));
+    }
+
+    @Test
+    void clearsLocalRecordsAndActivePracticeSessions() throws Exception {
+        mockMvc.perform(post("/study/star").param("questionId", "aip-c01-q-1"))
+                .andExpect(status().is3xxRedirection());
+        MvcResult reviewStart = mockMvc.perform(post("/review/start")
+                        .param("selection", "range").param("range", "1-1"))
+                .andExpect(redirectedUrl("/review")).andReturn();
+        MockHttpSession session = (MockHttpSession) reviewStart.getRequest().getSession(false);
+        mockMvc.perform(post("/review/check").session(session).param("answers", "C"))
+                .andExpect(redirectedUrl("/review"));
+        mockMvc.perform(post("/exam/start").session(session).param("number", "1"))
+                .andExpect(redirectedUrl("/exam/session"));
+
+        assertTrue(attemptRepository.count() > 0);
+        assertTrue(progressRepository.count() > 0);
+        assertTrue(session.getAttribute("certforge.review") != null);
+        assertTrue(session.getAttribute("certforge.exam") != null);
+
+        mockMvc.perform(post("/data/reset").session(session))
+                .andExpect(redirectedUrl("/?reset=success"));
+
+        assertEquals(0, attemptRepository.count());
+        assertEquals(0, progressRepository.count());
+        assertNull(session.getAttribute("certforge.review"));
+        assertNull(session.getAttribute("certforge.exam"));
+        String dashboard = mockMvc.perform(get("/").param("reset", "success"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertTrue(dashboard.contains("本地做题记录已清空"));
     }
 
     @Test

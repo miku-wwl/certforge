@@ -114,6 +114,12 @@ public class ProgressService {
                 .orElse(MasteryStatus.NEW);
     }
 
+    @Transactional
+    public void clearAllRecords() {
+        attemptRepository.deleteAllInBatch();
+        progressRepository.deleteAllInBatch();
+    }
+
     private static String encode(Set<String> answers) {
         return answers.stream().sorted().collect(Collectors.joining(","));
     }
