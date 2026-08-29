@@ -24,6 +24,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.nio.charset.StandardCharsets;
+
 @SpringBootTest
 @TestPropertySource(properties = "spring.datasource.url=jdbc:h2:mem:certforge-test;DB_CLOSE_DELAY=-1")
 class CertForgeIntegrationTest {
@@ -143,6 +145,26 @@ class CertForgeIntegrationTest {
         String dashboard = mockMvc.perform(get("/").param("reset", "success"))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertTrue(dashboard.contains("本地做题记录已清空"));
+    }
+
+    @Test
+    void exportsAnswerStatusAsExcelFriendlyUtf8Csv() throws Exception {
+        MvcResult reviewStart = mockMvc.perform(post("/review/start")
+                        .param("selection", "range").param("range", "1-1"))
+                .andExpect(redirectedUrl("/review")).andReturn();
+        MockHttpSession session = (MockHttpSession) reviewStart.getRequest().getSession(false);
+        mockMvc.perform(post("/review/check").session(session).param("answers", "C"))
+                .andExpect(redirectedUrl("/review"));
+
+        MvcResult export = mockMvc.perform(get("/data/export.csv"))
+                .andExpect(status().isOk()).andReturn();
+        String csv = new String(export.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8);
+        assertTrue(export.getResponse().getContentType().startsWith("text/csv"));
+        assertTrue(export.getResponse().getHeader("Content-Disposition").contains("attachment"));
+        assertTrue(csv.startsWith("\uFEFF题号,题目ID,主题,题型"));
+        assertTrue(csv.contains("aip-c01-q-1"));
+        assertTrue(csv.contains("即时答题"));
+        assertTrue(csv.contains("一家零售公司拥有"));
     }
 
     @Test

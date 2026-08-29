@@ -45,11 +45,14 @@
             <div>
                 <p class="eyebrow" th:text="#{dashboard.dataEyebrow}">LOCAL DATA</p>
                 <h2 th:text="#{dashboard.dataTitle}">本地学习记录</h2>
-                <p class="muted small" th:text="#{dashboard.dataDescription}">清空答题历史、错题统计、星标和学习进度；题库内容不会删除。</p>
+                <p class="muted small" th:text="#{dashboard.dataDescription}">导出完整答题记录或清空本地答题数据；题库内容不会删除。</p>
             </div>
-            <form th:action="@{/data/reset}" method="post" th:attr="data-reset-confirm=#{dashboard.resetConfirm}">
-                <button class="button danger" type="submit" th:text="#{dashboard.resetRecords}">清空本地记录</button>
-            </form>
+            <div class="data-actions">
+                <a class="button secondary" th:href="@{/data/export.csv}" th:text="#{dashboard.exportRecords}">导出答题情况 CSV</a>
+                <form th:action="@{/data/reset}" method="post" th:attr="data-reset-confirm=#{dashboard.resetConfirm}">
+                    <button class="button danger" type="submit" th:text="#{dashboard.resetRecords}">清空本地记录</button>
+                </form>
+            </div>
         </div>
         <div class="form-success" th:if="${resetComplete}" role="status" th:text="#{dashboard.resetSuccess}">本地做题记录已清空，题库内容未受影响。</div>
     </section>
