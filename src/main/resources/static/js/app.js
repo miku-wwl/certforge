@@ -71,37 +71,66 @@
         return legacyCopy(text);
     }
 
-    document.querySelectorAll('[data-copy-question]').forEach(function (button) {
+    function buildQuestionText(card) {
+        const question = card && card.querySelector('.question-text');
+        const options = card ? Array.from(card.querySelectorAll('.option-list .option-row')) : [];
+        if (!question || !options.length) return '';
+        const optionLines = options.map(function (option) {
+            const label = option.querySelector('.option-label');
+            const copy = option.querySelector('.option-copy');
+            return (label ? label.textContent.trim() : '') + '. ' + (copy ? copy.textContent.trim() : '');
+        });
+        return question.textContent.trim() + '\n\n' + optionLines.join('\n');
+    }
+
+    function buildQuestionAnswerText(card) {
+        const questionText = buildQuestionText(card);
+        const answer = card && (card.querySelector('[data-copy-answer-source] [data-copy-answer]')
+            || card.querySelector('[data-copy-answer]'));
+        const answerSource = answer && answer.closest('[data-copy-answer-source]');
+        const answerLabel = answerSource
+            ? answerSource.querySelector('.revealed-answer span')
+            : null;
+        const explanation = card && (card.querySelector('[data-copy-answer-source] [data-copy-explanation]')
+            || card.querySelector('[data-copy-explanation]'));
+        const explanationSource = explanation && explanation.closest('[data-copy-answer-source]');
+        const explanationLabel = explanationSource
+            ? explanationSource.querySelector('.deep-explanation .inline-explanation-heading strong')
+            : null;
+        if (!questionText || !answer || !explanation) return '';
+
+        return [
+            questionText,
+            (answerLabel ? answerLabel.textContent.trim() : 'Correct answer') + ': ' + answer.textContent.trim(),
+            (explanationLabel ? explanationLabel.textContent.trim() : 'Explanation') + ':\n' + explanation.innerText.trim()
+        ].join('\n\n');
+    }
+
+    function updateCopyButton(button, succeeded) {
+        const status = button.querySelector('[data-copy-status]');
+        const originalLabel = button.dataset.copyLabel || 'Copy';
+        button.classList.toggle('copied', succeeded);
+        button.classList.toggle('copy-failed', !succeeded);
+        if (status) {
+            status.textContent = succeeded
+                ? (button.dataset.copiedLabel || 'Copied')
+                : (button.dataset.copyFailedLabel || 'Copy failed');
+        }
+        window.clearTimeout(button.copyResetTimer);
+        button.copyResetTimer = window.setTimeout(function () {
+            button.classList.remove('copied', 'copy-failed');
+            if (status) status.textContent = originalLabel;
+        }, 1800);
+    }
+
+    document.querySelectorAll('[data-copy-question], [data-copy-question-answer]').forEach(function (button) {
         button.addEventListener('click', async function () {
             const card = button.closest('.question-card');
-            const question = card && card.querySelector('.question-text');
-            const options = card ? Array.from(card.querySelectorAll('.option-list .option-row')) : [];
-            const status = button.querySelector('[data-copy-status]');
-            const originalLabel = button.dataset.copyLabel || 'Copy question';
-            let succeeded = false;
-
-            if (question && options.length) {
-                const optionLines = options.map(function (option) {
-                    const label = option.querySelector('.option-label');
-                    const copy = option.querySelector('.option-copy');
-                    return (label ? label.textContent.trim() : '') + '. ' + (copy ? copy.textContent.trim() : '');
-                });
-                const text = question.textContent.trim() + '\n\n' + optionLines.join('\n');
-                succeeded = await copyText(text);
-            }
-
-            button.classList.toggle('copied', succeeded);
-            button.classList.toggle('copy-failed', !succeeded);
-            if (status) {
-                status.textContent = succeeded
-                    ? (button.dataset.copiedLabel || 'Copied')
-                    : (button.dataset.copyFailedLabel || 'Copy failed');
-            }
-            window.clearTimeout(button.copyResetTimer);
-            button.copyResetTimer = window.setTimeout(function () {
-                button.classList.remove('copied', 'copy-failed');
-                if (status) status.textContent = originalLabel;
-            }, 1800);
+            const text = button.hasAttribute('data-copy-question-answer')
+                ? buildQuestionAnswerText(card)
+                : buildQuestionText(card);
+            const succeeded = text ? await copyText(text) : false;
+            updateCopyButton(button, succeeded);
         });
     });
 

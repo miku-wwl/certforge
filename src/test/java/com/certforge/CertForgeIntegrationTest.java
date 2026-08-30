@@ -44,7 +44,7 @@ class CertForgeIntegrationTest {
     }
 
     @Test
-    void rendersDashboardStudyAndReviewWithoutLeakingAnswerBeforeCheck() throws Exception {
+    void rendersDashboardStudyAndReviewWithCopyAvailableBeforeCheck() throws Exception {
         mockMvc.perform(get("/")).andExpect(status().isOk());
         mockMvc.perform(get("/study")).andExpect(status().isOk());
 
@@ -53,13 +53,15 @@ class CertForgeIntegrationTest {
         MockHttpSession session = (MockHttpSession) start.getRequest().getSession(false);
         String before = mockMvc.perform(get("/review").session(session)).andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
-        assertFalse(before.contains("Correct Answer"));
-        assertFalse(before.contains("正确答案"));
         assertFalse(before.contains("58%"));
-        assertFalse(before.contains("考点背景"));
         assertFalse(before.contains("data-answer-reveal"));
         assertTrue(before.contains("data-copy-question"));
         assertTrue(before.contains("复制题目"));
+        assertTrue(before.contains("data-copy-question-answer"));
+        assertTrue(before.contains("复制题目+答案+题解"));
+        assertTrue(before.contains("data-copy-answer-source"));
+        assertTrue(before.contains("data-copy-answer"));
+        assertTrue(before.contains("data-copy-explanation"));
 
         mockMvc.perform(post("/review/check").session(session).param("answers", "C"))
                 .andExpect(redirectedUrl("/review"));
@@ -71,6 +73,10 @@ class CertForgeIntegrationTest {
         assertTrue(after.contains("场景比喻"));
         assertTrue(after.contains("explanation-table"));
         assertTrue(after.contains("data-answer-reveal"));
+        assertTrue(after.contains("data-copy-question-answer"));
+        assertTrue(after.contains("复制题目+答案+题解"));
+        assertTrue(after.contains("data-copy-answer"));
+        assertTrue(after.contains("data-copy-explanation"));
         assertTrue(after.contains("下一题 →"));
         assertFalse(after.contains("data-explanation-modal"));
         assertFalse(after.contains("role=\"dialog\""));
@@ -99,6 +105,23 @@ class CertForgeIntegrationTest {
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertTrue(setup.contains("设置一轮练习"));
         assertFalse(setup.contains("第 1 题"));
+    }
+
+    @Test
+    void wrongReviewRendersRecordedListWithoutStartingInstantPractice() throws Exception {
+        MvcResult start = mockMvc.perform(post("/review/start")
+                        .param("selection", "range").param("range", "1-1"))
+                .andExpect(redirectedUrl("/review")).andReturn();
+        MockHttpSession session = (MockHttpSession) start.getRequest().getSession(false);
+        mockMvc.perform(post("/review/check").session(session).param("answers", "A"))
+                .andExpect(redirectedUrl("/review"));
+
+        String wrongPage = mockMvc.perform(get("/wrong"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertTrue(wrongPage.contains("曾经答错的题目"));
+        assertTrue(wrongPage.contains("第 1 题"));
+        assertFalse(wrongPage.contains("开始错题练习"));
+        assertFalse(wrongPage.contains("/review?filter=wrong"));
     }
 
     @Test

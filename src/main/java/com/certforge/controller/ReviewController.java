@@ -147,9 +147,12 @@ public class ReviewController {
         QuestionViewDto questionView = questionViewMapper.review(question, selected, checked,
                 state.practiceSession().optionOrderFor(question.id()));
         CheckResultDto result = checked ? questionViewMapper.result(question, selected, state.checkedResults().get(questionId)) : null;
+        CheckResultDto copyResult = result != null ? result : questionViewMapper.result(question, selected, false);
 
         model.addAttribute("question", questionView);
         model.addAttribute("checkResult", result);
+        model.addAttribute("copyCorrectAnswers", copyResult.getCorrectAnswers());
+        model.addAttribute("copyExplanationHtml", copyResult.getAiExplanationHtml());
         model.addAttribute("position", state.practiceSession().currentIndex() + 1);
         model.addAttribute("total", state.practiceSession().size());
         model.addAttribute("hasPrevious", state.practiceSession().currentIndex() > 0);
