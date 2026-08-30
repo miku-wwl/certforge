@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">CertForge</title>
+  <defs>
+    <linearGradient id="background" x1="7" y1="5" x2="57" y2="60" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6258ee"/>
+      <stop offset="1" stop-color="#8b5cf6"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="17" fill="url(#background)"/>
+  <path d="M48.5 10.5l1.3 4.2 4.2 1.3-4.2 1.3-1.3 4.2-1.3-4.2-4.2-1.3 4.2-1.3 1.3-4.2z" fill="#fff" opacity=".92"/>
+  <text x="32" y="40" fill="#fff" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="800" letter-spacing="-1.5" text-anchor="middle">CF</text>
+</svg>

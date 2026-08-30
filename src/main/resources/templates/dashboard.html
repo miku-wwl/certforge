@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language == 'en' ? 'en' : 'zh-CN'}">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-    <title th:text="#{dashboard.title}">CertForge · 总览</title><link rel="stylesheet" th:href="@{/css/app.css}">
+    <title th:text="#{dashboard.title}">CertForge · 总览</title><link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}"><link rel="stylesheet" th:href="@{/css/app.css}">
 </head>
 <body data-page="dashboard">
 <div th:replace="~{fragments :: topbar('dashboard')}"></div>

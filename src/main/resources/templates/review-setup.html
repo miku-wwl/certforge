@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language == 'en' ? 'en' : 'zh-CN'}">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title th:text="#{review.setupTitle}">开始练习 · CertForge</title><link rel="stylesheet" th:href="@{/css/app.css}"></head>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title th:text="#{review.setupTitle}">开始练习 · CertForge</title><link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}"><link rel="stylesheet" th:href="@{/css/app.css}"></head>
 <body data-page="review"><div th:replace="~{fragments :: topbar('review')}"></div><div class="app-shell"><div th:replace="~{fragments :: sidebar('review')}"></div>
 <main class="main-content narrow-content"><section class="page-heading compact"><div><p class="eyebrow" th:text="#{review.eyebrow}">REVIEW MODE / 即时答题</p><h1 th:text="#{review.heading}">设置一轮练习</h1><p class="muted" th:text="#{review.setupDescription}">提交前不会显示正确答案或社区投票。</p></div></section>
 <form class="setup-card panel" method="post" th:action="@{/review/start}">

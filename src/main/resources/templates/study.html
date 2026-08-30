@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language == 'en' ? 'en' : 'zh-CN'}">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title th:text="#{study.title}">背题模式 · CertForge</title><link rel="stylesheet" th:href="@{/css/app.css}"></head>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title th:text="#{study.title}">背题模式 · CertForge</title><link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}"><link rel="stylesheet" th:href="@{/css/app.css}"></head>
 <body data-page="study">
 <div th:replace="~{fragments :: topbar('study')}"></div><div class="app-shell"><div th:replace="~{fragments :: sidebar('study')}"></div>
 <main class="main-content">
