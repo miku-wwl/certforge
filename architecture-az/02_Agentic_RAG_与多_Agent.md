@@ -18,10 +18,13 @@ flowchart LR
     S --> A[Action Agent]
     S --> V[Validation Agent]
     R --> IQ[Foundry IQ Knowledge Base]
-    A --> T[MCP / REST Tools]
-    T --> F[Azure Functions / Logic Apps]
+    A --> TB[Foundry Toolbox / MCP]
+    TB -.可选治理.-> APIM
+    TB --> T[Azure Functions / REST / APIs]
     V --> C[Guardrails / Policy Check]
-    S <--> M[(Session State / Cosmos DB)]
+    S <--> SS[(Conversation / Session State)]
+    S <--> LM[(Managed Memory Store\nLong-term Agent Memory)]
+    S <--> BS[(Cosmos DB\nBusiness State / Compliance)]
     S --> O[Application Insights Traces]
 ```
 
@@ -43,8 +46,8 @@ Microsoft Agent Framework 是 Hosted Agent 的推荐多 Agent 编排层。按确
 |---|---|
 | AgentCore Runtime | Foundry Agent Service Hosted Agent |
 | AgentCore Identity | 每个 Hosted Agent 的专用 Microsoft Entra 身份 |
-| AgentCore Memory | Agent session state；合规场景可 BYO Cosmos DB/Storage |
-| AgentCore Gateway | APIM AI Gateway；治理 Model、MCP Tool、A2A API |
+| AgentCore Memory | Foundry Managed Memory Store；Conversation/session state 与业务状态分开，合规业务状态仍可 BYO Cosmos DB/Storage |
+| AgentCore Gateway | Foundry Toolbox/MCP 负责工具注册、发现和治理；APIM AI Gateway 作为可选的统一鉴权、配额和审计层 |
 | Bedrock Knowledge Base | Foundry IQ Knowledge Base |
 | Action Group + Lambda | MCP/REST Tool + Azure Functions/Logic Apps |
 | AgentCore Observability | OpenTelemetry + Application Insights + Foundry Traces |
@@ -53,6 +56,8 @@ Microsoft Agent Framework 是 Hosted Agent 的推荐多 Agent 编排层。按确
 
 - 只查资料：Foundry IQ/RAG 足够，不必引入多 Agent。
 - 要调用业务系统：使用 Tool/MCP，并让 APIM 统一鉴权、配额和审计。
+- 长期记忆、会话状态和业务状态是三个不同的数据域：Managed Memory Store 用于 Agent 长期记忆；会话状态用于当前协作上下文；订单、审批和合规记录落 Cosmos DB/Storage 等业务存储。
+- Foundry Toolbox/MCP 是工具注册与连接层；APIM 是可选的外部治理层，不要把所有工具调用都误画成必须经过 APIM 的单一产品链路。
 - 需要确定重试、补偿和人工审批：外围使用 Durable Functions/Logic Apps，不要把所有状态交给模型自由规划。
 - A2A 和部分 Agent Guardrail/Workflow 能力仍可能处于预览；生产设计必须按目标区域重新核对。
 

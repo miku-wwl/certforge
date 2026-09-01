@@ -20,7 +20,11 @@ flowchart LR
     LA --> WB[Workbook / Dashboard]
     DT --> AG[Action Group]
     AG --> N[Email / Teams / Webhook]
-    COST[Cost Management Budget] --> AG
+    COST[Cost Management\nresource spend / budget / forecast] --> AG
+    BILL[Billing export / usage data] --> UE[Unit economics\nOTel tokens + KQL]
+    AI --> UE
+    UE --> WB
+    Q[Evaluation score / custom quality metric] --> DT
     ACT[Activity Log / Purview Audit] --> AUDIT[(Long-term Audit)]
 ```
 
@@ -46,7 +50,9 @@ flowchart LR
 
 - Foundry tracing 会捕获 Prompt、Response、Tool call 等客户数据，启用前必须确定 RBAC、脱敏和保留期；
 - Foundry Agent Service 的 server-side tracing 在连接 Application Insights 后可用；应用自定义逻辑仍需 client-side OTel；
+- Azure Cost Management 适合资源 spend、budget 和 forecast；`$/request`、`$/agent run`、`$/tool invocation` 等 Unit Economics 应由 OTel token/usage、模型与调用维度在 App Insights/Log Analytics 中用 KQL 聚合，再与 billing 数据对账；
 - 仅用 Cost Management 月度账单无法定位单个 Agent/Tool；必须添加项目、部署、租户、Agent 和 Tool 维度；
+- Dynamic Threshold 能检测 latency、error 或 custom metric 异常；semantic quality drift 必须先由 Evaluation score 或自定义质量指标产出，不能直接从账单或普通延迟指标推断；
 - Dashboard 是展示层，不替代 Alert Rule、Action Group 和自动化响应。
 
 ## 官方依据

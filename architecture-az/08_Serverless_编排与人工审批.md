@@ -18,11 +18,16 @@ flowchart LR
     P --> F2[提取/验证 Activity]
     F1 --> B[(Blob 大对象)]
     F2 --> C[(Cosmos DB 状态/审计)]
-    D --> W[Wait for External Event]
-    W --> H[Logic Apps / Human Approval]
-    H --> CB[Raise Event / Callback]
+    D -->|发起审批| Q[Service Bus Approval Queue]
+    Q --> H[Logic Apps / Human Approval UI]
+    H -->|approval_request_id\n幂等 callback| CB[Raise External Event]
     CB --> D
-    D -->|失败| SB[Service Bus DLQ / Retry]
+    D --> T[Durable Timer / Timeout]
+    T -->|超时升级| Q
+    D -->|Retry / Catch / Compensation| D
+    D -->|terminal business failure\n显式 SendMessage| M[Service Bus Manual Intervention Queue]
+    M --> H
+    M -->|consumer max delivery / poison| DLQ[Service Bus DLQ]
 ```
 
 ## 模式映射
@@ -30,7 +35,7 @@ flowchart LR
 | Step Functions 模式 | Azure 对应 |
 |---|---|
 | Parallel / Map | Durable Functions fan-out/fan-in；并行 Activity |
-| Retry / Catch / Timeout | Durable Task retry policy + exception/timeout handling |
+| Retry / Catch / Timeout | Durable Task retry policy + exception/timeout handling + Durable Timer |
 | Task Token | Durable external event 或 Logic Apps callback |
 | Standard 长流程 | Durable Functions 或 Logic Apps Standard |
 | Express 高频短流程 | Event Grid + Functions；必要时 Logic Apps consumption |
@@ -43,6 +48,8 @@ flowchart LR
 - 有确定状态、补偿、外部回调、超时和财务审计时，使用 Durable Functions/Logic Apps 作为外层控制器；
 - 人工审批不可仅依赖内存中的对话状态；审批请求、操作者和结果要持久化；
 - Service Bus 负责解耦和 DLQ，不替代 Orchestrator 的业务状态机。
+- Durable Orchestrator 的 Retry/Catch/Timeout/Compensation 属于编排失败域；只有终态业务失败才通过显式 `SendMessage` 写入人工干预队列。Service Bus DLQ 只处理该消息在消费侧达到最大投递次数或被标记为 poison 的情况。
+- Durable external event 要携带唯一 `approval_request_id` 并在回调侧去重；不要把重复事件当成新的审批结果。
 - Logic Apps/Power Apps/业务审核台组成的是自建人工审批闭环，不应写成 Amazon A2I 的原生 1:1 产品替代。
 
 ## 官方依据

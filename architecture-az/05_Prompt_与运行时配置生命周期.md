@@ -21,15 +21,16 @@ flowchart TD
 
     subgraph RuntimePlane[运行时配置面]
         C[Azure App Configuration] --> F[Feature / Variant Flag]
-        F --> K[Key Vault Reference]
-        K --> L[Function / Container Apps Router]
+        F --> L[Function / Container Apps Router]
+        K[Key Vault Reference] --> L
         L --> M1[Foundry Model A]
         L --> M2[Foundry Model B]
     end
 
     R --> L
-    G --> ACT[Azure DevOps Audit / Activity Log]
-    C --> ACT
+    G --> AD[Azure DevOps Audit]
+    C --> AL[Azure Activity Log]
+    K --> AL
 ```
 
 ## 三个概念不要混淆
@@ -52,6 +53,7 @@ flowchart TD
 - Feature Flag 只指向已评估、已批准的版本；
 - App Configuration 使用标签区分环境，并启用快照/回滚；
 - Key Vault 只保存秘密，不保存可频繁变化的业务 Prompt；
+- Azure DevOps Audit 记录 Git/PR/流水线活动；Azure Activity Log 记录 App Configuration、Key Vault 和 Azure 资源控制面变更，两者是不同的审计源；
 - 记录评估 Run ID、Git SHA、配置 Snapshot 和生产 Deployment ID。
 
 ## 官方依据

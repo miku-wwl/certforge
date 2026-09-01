@@ -32,8 +32,9 @@
 ```mermaid
 flowchart LR
     subgraph Ingestion[离线/增量摄取]
-        A[Blob / SharePoint / OneLake] --> B[PII、质量与 Metadata]
-        B --> C[Foundry IQ Indexed Knowledge Source]
+        A[Raw Blob / SharePoint / OneLake] --> P[PII 预处理 / 分类]
+        P --> S[Sanitized Blob / 受治理源]
+        S --> C[Foundry IQ Indexed Knowledge Source]
         C --> D[自动切块、向量化、Metadata/ACL 同步]
         D --> E[(Azure AI Search Index)]
     end
@@ -59,7 +60,7 @@ flowchart LR
 | OpenSearch Serverless | Azure AI Search | Vector、Keyword、Hybrid、Semantic Ranker、Metadata Filter |
 | Titan Embeddings | Foundry Models 中的 Embedding 部署 | Indexed Knowledge Source 会托管向量化；只有自定义摄取流水线才需要显式调用 Embedding 部署 |
 | RetrieveAndGenerate | Agent/Application 调用 Foundry IQ，再调用 Foundry Model | 返回可追溯的 grounding data 与 citation |
-| Comprehend PII | Azure AI Language PII；必要时结合 Purview 分类 | 摄取前识别、遮蔽或隔离 PII；Content Safety 负责有害内容，不是通用 PII 替代品 |
+| Comprehend PII | Azure AI Language PII；必要时结合 Purview 分类 | 摄取前识别、遮蔽或隔离 PII；也可以把 PII Skill 放在 AI Search enrichment pipeline 内；Content Safety 不是通用 PII 替代品 |
 
 ## 为什么它仍然是经典架构
 
@@ -78,6 +79,7 @@ Foundry IQ 把知识源、权限、检索策略和引用从 Prompt 中分离出�
 
 - Foundry IQ **依赖 Azure AI Search**；它不是另一个独立向量数据库。
 - Indexed Knowledge Source 会通过 Azure AI Search indexer 托管切块、向量化、Metadata 提取和受支持数据源的 ACL 同步；不要在图外再重复搭一套 Embedding 流水线。自定义切块或自定义向量模型时，才改走自管摄取。
+- PII 预处理必须明确产物边界：优先把原始对象保留在受限 Raw 区，把脱敏/分类后的 Sanitized Blob 交给知识源；若使用 AI Search PII Skill，则应标注它属于 enrichment/indexing pipeline，而不是独立的在线推理步骤。
 - Content Safety 不能替代 RAG。护栏负责检测和阻止风险，不会自动提供企业事实。
 - Private Endpoint 不能自动实现文档级权限；必须配置 Entra、RBAC/ACL 和知识源权限同步。
 - 只有固定 SQL 聚合的结构化数据应走 Text-to-SQL，不要先转成向量再绕一圈。
