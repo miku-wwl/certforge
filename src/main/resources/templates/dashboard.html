@@ -16,10 +16,10 @@
     <section class="course-banner">
         <div class="course-icon">AWS<br><small>AI</small></div>
         <div><p class="eyebrow light" th:text="#{dashboard.activeBank}">ACTIVE QUESTION BANK</p><h2 th:text="${metadata.title}">AWS Certified Generative AI Developer - Professional</h2>
-            <p><span class="pill dark" th:text="${metadata.code}">AIP-C01</span> <span class="banner-meta" th:text="${metadata.questionCount + ' ' + #messages.msg('dashboard.questionCount')}">117 道题 · Markdown source</span></p></div>
+            <p><span class="pill dark" th:text="${metadata.code}">AIP-C01</span> <span class="banner-meta" th:text="${metadata.questionCount + ' ' + #messages.msg('dashboard.questionCount')}">127 道题 · Markdown source</span></p></div>
     </section>
     <section class="stats-grid" th:attr="aria-label=#{dashboard.stats}">
-        <div class="stat-card"><span class="stat-label" th:text="#{dashboard.total}">题库总数</span><strong th:text="${progress.total}">117</strong><span class="stat-icon blue">#</span></div>
+        <div class="stat-card"><span class="stat-label" th:text="#{dashboard.total}">题库总数</span><strong th:text="${progress.total}">127</strong><span class="stat-icon blue">#</span></div>
         <div class="stat-card"><span class="stat-label" th:text="#{dashboard.attempted}">已答题</span><strong th:text="${progress.attempted}">0</strong><span class="stat-icon violet">↗</span></div>
         <div class="stat-card"><span class="stat-label" th:text="#{dashboard.currentCorrect}">当前答对</span><strong th:text="${progress.correct}">0</strong><span class="stat-icon green">✓</span></div>
         <div class="stat-card"><span class="stat-label" th:text="#{dashboard.currentIncorrect}">当前答错</span><strong th:text="${progress.incorrect}">0</strong><span class="stat-icon red">!</span></div>
@@ -30,7 +30,7 @@
         <div class="panel progress-panel">
             <div class="panel-heading"><div><p class="eyebrow" th:text="#{dashboard.progress}">PROGRESS</p><h2 th:text="#{dashboard.progressTitle}">学习进度</h2></div><span class="percentage" th:text="${progress.accuracy + '%'}">0.0%</span></div>
             <div class="progress-track"><div class="progress-fill" th:style="|width: ${progress.total == 0 ? 0 : (progress.attempted * 100 / progress.total)}%|"></div></div>
-            <div class="progress-legend"><span><i class="dot blue"></i><span th:text="#{dashboard.answered}">已答</span> <b th:text="${progress.attempted}">0</b></span><span><i class="dot green"></i><span th:text="#{common.correct}">答对</span> <b th:text="${progress.correct}">0</b></span><span><i class="dot gray"></i><span th:text="#{dashboard.unanswered}">未答</span> <b th:text="${progress.unanswered}">117</b></span></div>
+            <div class="progress-legend"><span><i class="dot blue"></i><span th:text="#{dashboard.answered}">已答</span> <b th:text="${progress.attempted}">0</b></span><span><i class="dot green"></i><span th:text="#{common.correct}">答对</span> <b th:text="${progress.correct}">0</b></span><span><i class="dot gray"></i><span th:text="#{dashboard.unanswered}">未答</span> <b th:text="${progress.unanswered}">127</b></span></div>
             <div class="panel-actions"><a class="text-link" th:href="@{/study}" th:text="#{dashboard.browse}">浏览题库 →</a><a class="text-link" th:if="${hasContinue}" th:href="@{/review}" th:text="#{dashboard.continue}">继续上次练习 →</a></div>
         </div>
         <div class="panel modes-panel"><div class="panel-heading"><div><p class="eyebrow" th:text="#{dashboard.modes}">PRACTICE MODES</p><h2 th:text="#{dashboard.chooseMode}">选择练习方式</h2></div></div>
@@ -61,7 +61,7 @@
         <div class="form-success" th:if="${resetComplete}" role="status" th:text="#{dashboard.resetSuccess}">本地做题记录已清空，题库内容未受影响。</div>
         <div class="form-success" th:if="${importComplete}" role="status">
             <span th:text="#{dashboard.importSuccess}">CSV 导入完成。</span>
-            <span> </span><span th:text="${importQuestionCount}">117</span>
+            <span> </span><span th:text="${importQuestionCount}">127</span>
             <span th:text="#{dashboard.importQuestions}">道题状态已恢复</span><span>, </span>
             <span th:text="${importAttemptCount}">0</span>
             <span th:text="#{dashboard.importAttempts}">条历史答题记录已恢复</span><span>.</span>

@@ -4,7 +4,7 @@
 <body data-page="study">
 <div th:replace="~{fragments :: topbar('study')}"></div><div class="app-shell"><div th:replace="~{fragments :: sidebar('study')}"></div>
 <main class="main-content">
-    <section class="page-heading compact"><div><p class="eyebrow" th:text="#{study.eyebrow}">STUDY MODE / 背题模式</p><h1 th:text="#{study.heading}">浏览题库</h1><p class="muted" th:text="#{study.description}">答案、社区投票和得票最高选项会直接显示，适合快速记忆。</p></div><span class="count-chip" th:text="${filterCount + ' ' + #messages.msg('study.matching')}">117 道匹配题</span></section>
+    <section class="page-heading compact"><div><p class="eyebrow" th:text="#{study.eyebrow}">STUDY MODE / 背题模式</p><h1 th:text="#{study.heading}">浏览题库</h1><p class="muted" th:text="#{study.description}">答案、社区投票和得票最高选项会直接显示，适合快速记忆。</p></div><span class="count-chip" th:text="${filterCount + ' ' + #messages.msg('study.matching')}">127 道匹配题</span></section>
     <form class="filter-bar" method="get" th:action="@{/study}">
         <label class="search-box"><span>⌕</span><input type="search" name="search" th:value="${search}" th:placeholder="#{study.searchPlaceholder}"></label>
         <label><span class="sr-only" th:text="#{common.topic}">Topic</span><select name="topic"><option value="" th:text="#{common.allTopics}">所有 Topic</option><option th:each="item : ${topics}" th:value="${item}" th:text="${item}" th:selected="${item == selectedTopic}"></option></select></label>

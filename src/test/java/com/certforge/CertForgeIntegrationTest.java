@@ -245,6 +245,6 @@ class CertForgeIntegrationTest {
 
     @Test
     void loadsBilingualAiExplanationsForEveryQuestion() {
-        assertTrue(explanationService.count() == 117);
+        assertTrue(explanationService.count() == 127);
     }
 }

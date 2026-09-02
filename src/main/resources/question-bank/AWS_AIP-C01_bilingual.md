@@ -2844,6 +2844,7 @@ A company has a customer service application that uses Amazon Bedrock to generat
 
 ---
 
+
 ## Question 99 - Topic 1
 
 ### 中文
@@ -3400,11 +3401,320 @@ A social messaging company is building an AI chat assistant by using Amazon Bedr
 - **A.** Configure an AWS Step Functions workflow. Configure a step to use an AWS Lambda function to pre-check inputs by using the ApplyGuardrail API. Use an InvokeModelWithResponseStream API step that has the guardrail attached. Configure a second Lambda function step to post-check outputs by using the ApplyGuardrail API. Route flagged items to an Amazon SQS queue. Enforce guardrail use by using a bedrock:GuardrailIdentifier IAM condition.
 - **B.** Configure an AWS Step Functions workflow. Configure a step to call the ApplyGuardrail API before inference. Then call the InvokeModel API without streaming and use the guardrail. Store the results in Amazon S3. Use the client UI to hide problematic tokens.
 - **C.** Configure an AWS Step Functions workflow. Configure a step to use the InvokeModelWithResponseStream API that has the guardrail attached for in-stream filtering. Run an AWS Lambda post-check step by using the ApplyGuardrail API to check flagged cases. Do not perform pre-inference.
-- **D.** Configure an AWS Step Functions workflow that includes steps to perform pre-checks and post-checks by using the ApplyGuardrail API and the InvokeModelWithResponseStream API. Attach the guardrail to the check steps. Use process controls such as code reviews instead of IAM enforcement to ensure that guardrails are always applied.
+    - **D.** Configure an AWS Step Functions workflow that includes steps to perform pre-checks and post-checks by using the ApplyGuardrail API and the InvokeModelWithResponseStream API. Attach the guardrail to the check steps. Use process controls such as code reviews instead of IAM enforcement to ensure that guardrails are always applied.
 
 **Correct Answer / 正确答案:** `A`
 
 **Community vote distribution / 社区投票分布:**
+
+
+---
+## Question 118 - Topic 1
+
+### 中文
+
+一家金融服务公司使用 Amazon Bedrock 分析存储在 Amazon S3 存储桶中的客户数据。数据包含个人身份信息（PII）。公司必须对基础模型（FM）响应中的 PII 进行掩码处理。哪种解决方案能够以**最低的运维工作量**满足要求？
+---
+
+- **A.** 在 Amazon Bedrock 中创建 Guardrail 以过滤 PII 内容。定义 PII 类型，并将 Guardrail 操作设置为 `MASK`。配置 Amazon Bedrock，使其对每个 FM 响应应用该过滤器。
+- **B.** 在调用 Amazon Bedrock 之前，使用 Amazon Comprehend 检测 S3 数据中的 PII 实体。配置 AWS Lambda 函数调用 Amazon Comprehend 的 `DetectPiiEntities` API，对检测到的 PII 进行掩码处理，并将处理后的数据存回原始 S3 存储桶。
+- **C.** 使用 Amazon Macie 扫描 S3 存储桶中的 PII 数据。配置 AWS Lambda 函数将 PII 存入第二个 S3 存储桶，并使用 Amazon EventBridge 规则调用该 Lambda 函数。
+- **D.** 配置 AWS Lambda 函数搜索 PII 数据。在 Lambda 函数代码中实现步骤，将 PII 存入第二个 S3 存储桶，并将非 PII 数据存入第三个 S3 存储桶。
+
+### English
+
+A financial services company uses Amazon Bedrock to analyze customer data that is stored in an Amazon S3 bucket. The data includes personally identifiable information (PII). The company must mask PII from foundation model (FM) responses. Which solution will meet this requirement with the LEAST operational effort?
+---
+
+- **A.** Create a guardrail in Amazon Bedrock to filter PII content. Define the PII type and set the guardrail action to `MASK`. Configure Amazon Bedrock to apply the filter to each FM response.
+- **B.** Use Amazon Comprehend to detect PII entities in the S3 data before invoking Amazon Bedrock. Configure an AWS Lambda function to call the Amazon Comprehend `DetectPiiEntities` API to mask detected PII. Store the processed data back to the original S3 bucket.
+- **C.** Use Amazon Macie to scan the S3 bucket for PII data. Configure an AWS Lambda function to store PII in a second S3 bucket. Use an Amazon EventBridge rule to invoke the Lambda function.
+- **D.** Configure an AWS Lambda function to search for PII data. Implement a step in the Lambda function code to store the PII in a second S3 bucket and non-PII data into a third S3 bucket.
+
+**Correct Answer / 正确答案:** `A`
+
+**Community vote distribution / 社区投票分布:**
+
+
+---
+
+## Question 119 - Topic 1
+
+### 中文
+
+一家医疗机构正在 Amazon Bedrock 上实施临床知识库应用，为医生提供医疗信息。在测试期间，质量团队发现生成式 AI（GenAI）模型偶尔会编造并非来自已批准临床指南的医疗治疗建议。
+
+质量团队需要在应用发布前实现幻觉检测方案。该方案必须将模型响应与经过验证的医疗信息进行分析比较，并能够识别用户以不同方式提出相似问题时产生的语义不一致。哪种解决方案能够满足这些要求？
+---
+
+- **A.** 部署实时监控系统，使用 Amazon CloudWatch Logs Insights 分析响应模式，并根据预定义关键字标记事实错误。实现 AWS Lambda 函数，将响应与 Amazon DynamoDB 表中的已知答案进行比较。
+- **B.** 创建包含临床指南中已验证问答对的参考数据集。使用 Amazon Bedrock Guardrails 执行输出差异比较和响应一致性分析，并使用 Amazon Bedrock 评估检测事实错误。
+- **C.** 配置 Amazon Bedrock Guardrails，通过识别 GenAI 响应中的特定模式，使用自定义规则检测并阻止潜在的幻觉内容。使用 Amazon SageMaker Feature Store 维护已验证临床指南的存储库。
+- **D.** 创建 Amazon Bedrock 自动模型评估任务，使用自定义提示数据集。设置异常检测告警以识别事实错误，并在检测到错误时使用 Amazon SNS 发送通知。
+
+### English
+
+A healthcare company is implementing a clinical knowledge base application on Amazon Bedrock that provides medical information to doctors. During testing, a quality team discovers that the generative AI (GenAI) model occasionally fabricates medical treatment recommendations that do not originate from the approved clinical guidelines. The quality team needs to implement a solution to detect the hallucinations before releasing the application. The solution must analyze model responses against verified medical information. The solution must identify semantic inconsistencies when users ask similar questions in different ways. Which solution will meet these requirements?
+---
+
+- **A.** Deploy a real-time monitoring system that uses Amazon CloudWatch Logs Insights to analyze response patterns and to flag factual inaccuracies based on predefined keywords. Implement AWS Lambda functions to compare responses with known answers from an Amazon DynamoDB table.
+- **B.** Create a reference dataset with validated question-answer pairs from clinical guidelines. Implement output diffing by using Amazon Bedrock Guardrails for response consistency analysis. Use Amazon Bedrock evaluation to detect factual inaccuracies.
+- **C.** Configure Amazon Bedrock Guardrails with custom rules to detect and block potentially hallucinated content by identifying specific patterns in the GenAI responses. Use Amazon SageMaker Feature Store to maintain a repository of verified clinical guidelines.
+- **D.** Create an Amazon Bedrock automatic model evaluation job with a custom prompt dataset. Set up anomaly detection alarms to identify factual inaccuracies. Implement Amazon SNS notifications when inaccuracies are detected.
+
+**Correct Answer / 正确答案:** `B`
+
+**Community vote distribution / 社区投票分布:**
+
+
+---
+
+## Question 120 - Topic 1
+
+### 中文
+
+一家公司部署了一个使用 Amazon Bedrock 基础模型（FM）和自定义提示的 GenAI 应用。公司必须实施自动化质量保证系统，根据预期响应验证 FM 输出，并检测随时间推移产生的回归问题。
+
+该方案必须使用语义相似度评分比较超过 500 个黄金样例，支持定期安排测试规则，并且能够在 6 个月内扩展到超过 2,000 个测试用例而无需进行架构变更。公司希望生成质量指标可视化结果，并在检测到质量下降时收到告警。哪种解决方案能够满足这些要求？
+---
+
+- **A.** 使用 Amazon SageMaker Model Monitor 跟踪 FM 中的数据漂移。为漂移指标配置 Amazon CloudWatch 告警，并使用 SageMaker AI 处理任务运行 FM 输出的定期评估。
+- **B.** 创建 AWS Lambda 函数调用 FM 处理测试用例，并将结果与预期输出比较。配置 Amazon EventBridge 计划规则运行测试，将自定义指标发布到 Amazon CloudWatch，以生成指标可视化和告警。
+- **C.** 使用 AWS Step Functions 工作流运行测试用例并验证响应。将测试结果存储在 Amazon DynamoDB 中，并使用 Amazon CloudWatch 控制面板可视化结果。
+- **D.** 配置 Amazon CloudWatch Synthetics Canary 调用 FM API。将响应与基线脚本比较，并根据 Canary 成功率创建 CloudWatch 告警。
+
+### English
+
+A company deploys a GenAI application that uses an Amazon Bedrock foundation model (FM) and custom prompts. The company must implement an automated quality assurance system to verify FM outputs against expected responses and detect regressions over time. The solution must compare outputs against more than 500 golden examples by using semantic similarity scoring. The solution must support regularly scheduled test rules. The solution must be able to scale to more than 2,000 test cases within 6 months without the need to make architecture changes. The company wants to generate visualizations for quality metrics. The company must receive alerts if the solution detects quality degradation. Which solution will meet these requirements?
+---
+
+- **A.** Use Amazon SageMaker Model Monitor to track data drift in the FM. Configure Amazon CloudWatch alarms for drift metrics. Use SageMaker AI processing jobs to run scheduled evaluations of FM outputs.
+- **B.** Create AWS Lambda functions that invoke the FM on test cases. Compare results against expected outputs. Configure Amazon EventBridge scheduled rules to run the test executions. Publish custom metrics to Amazon CloudWatch to generate metric visualizations and alarms.
+- **C.** Use AWS Step Functions workflows to run test cases and validate responses. Store the test results in Amazon DynamoDB. Use Amazon CloudWatch dashboards to visualize the results.
+- **D.** Configure Amazon CloudWatch Synthetics canaries to invoke the FM APIs. Compare responses with baseline scripts. Create CloudWatch alarms based on canary success rates.
+
+**Correct Answer / 正确答案:** `B`
+
+**Community vote distribution / 社区投票分布:**
+
+
+---
+
+## Question 121 - Topic 1
+
+### 中文
+
+一家金融服务公司需要为多语言 AI 助手构建零接触的推广工作流，自动将提示更新从开发环境移动到生产环境。只有满足若干标准时，工作流才能推广提示更新。
+
+更新必须提高 AI 助手支持的全部五种语言的准确率；与旧版本提示相比，更新在相似查询上的方差必须更低；更新必须通过与投资风险和费用披露相关的所有监管合规检查。工作流必须在公司现有 CI/CD 流水线中运行，支持提示版本比较，生成可审计的评估报告，并且长期保持成本效益。哪种解决方案能够满足这些要求？
+---
+
+- **A.** 使用 Amazon SageMaker Canvas 以可视化方式比较提示输出。创建控制面板展示指标，并将结果导出到文档协作系统以供人工审核监管合规性。安排提示工程师和合规官员每周开会讨论改进。
+- **B.** 使用 Amazon S3 对象版本实现提示版本控制。配置 AWS Lambda 函数手动对响应评分，将评估指标存入 Amazon DynamoDB，并构建自定义 Amazon QuickSight 控制面板，以可视化不同语言和产品类型的准确率。
+- **C.** 使用 Amazon Bedrock Prompt Management 实现提示版本控制和提示 A/B 测试。使用 Amazon Bedrock Evaluations 和基于 LLM 的评判器自动评估准确率与一致性指标。创建 Amazon Bedrock Flow 以简化跨语言测试，并将 Flow 集成到现有 CI/CD 流水线。
+- **D.** 构建使用 AWS Amplify 作为前端、AWS Lambda 作为后端的自定义评估框架。实现团队成员对响应质量进行投票的众包功能，并使用 Amazon Comprehend 分析响应情感和跨语言一致性。
+
+### English
+
+A financial services company needs to build a zero-touch promotion workflow for a multilingual AI assistant that automatically moves prompt updates from a development environment to a production environment. The workflow must promote prompt updates only if the updates meet several criteria. The updates must improve accuracy in all five languages that the AI assistant supports. The updates must show lower variance across similar queries than older prompt versions. The updates must pass all regulatory compliance checks for content related to investment risks and fee disclosures. The workflow must run inside the company’s existing CI/CD pipeline, support prompt version comparisons, generate auditable evaluation reports, and remain cost-effective over time. Which solution will meet these requirements?
+---
+
+- **A.** Use Amazon SageMaker Canvas to visually compare prompt outputs. Create a dashboard to display metrics. Export findings to a document collaboration system to review for regulatory compliance. Schedule weekly meetings between prompt engineers and compliance officers to discuss improvements.
+- **B.** Implement prompt version control by using Amazon S3 object versions. Configure AWS Lambda functions to manually score responses. Store evaluation metrics in an Amazon DynamoDB table. Build a custom Amazon QuickSight dashboard to visualize accuracy across languages and product types.
+- **C.** Use Amazon Bedrock Prompt Management to implement prompt version control and to perform A/B testing for prompts. Use Amazon Bedrock Evaluations and LLM-based judges to perform automated evaluations for accuracy and consistency metrics. Create a flow in Amazon Bedrock to streamline testing across languages. Integrate the flow with the existing CI/CD pipeline.
+- **D.** Build a custom evaluation framework that uses AWS Amplify as the frontend and AWS Lambda functions as the backend. Implement crowdsourcing features in which team members vote on response quality. Use Amazon Comprehend to analyze sentiments in responses and to evaluate for consistency across languages.
+
+**Correct Answer / 正确答案:** `C`
+
+**Community vote distribution / 社区投票分布:**
+
+
+---
+
+## Question 122 - Topic 1
+
+### 中文
+
+一家金融公司正在构建 AI 驱动的推荐系统。系统使用实时市场数据和经过验证的内部文档。系统必须具备评估能力，收集明确的用户评分并实时检测有问题的响应；跟踪模型随时间推移的表现，并支持不同提示或模型变体的 A/B 测试。
+
+系统必须编排多步骤工作流，这些工作流需要检索可信知识、验证输入并生成推荐。系统必须将所有用户反馈、标记事件和审计日志安全存储在符合合规要求的不可变存储库中。该存储库必须是一次写入、防篡改且具有篡改证据的存储，适合受监管的审计保留。哪种架构能够满足这些要求？
+---
+
+- **A.** 在 Amazon SageMaker JumpStart 上部署微调 FM。使用 Amazon Bedrock AgentCore 编排输入验证和检索工作流。将用户反馈和标记查询存储在 Amazon DynamoDB 中。对 AWS CloudTrail 日志运行计划的 Amazon Athena 查询以检测异常。将生成的输出存储在加密的 Amazon S3 存储桶中，并启用 S3 Object Lock。
+- **B.** 配置 Amazon API Gateway 调用从 Amazon Kendra 检索信息的 Amazon Bedrock FM。将所有响应存储在加密的 Amazon S3 存储桶中，启用 S3 Object Lock，并使用 Amazon Macie 扫描已存储日志中的问题内容。
+- **C.** 使用 Amazon Bedrock AgentCore 编排从精选 Amazon Kendra 索引的检索。配置 AWS Lambda 函数清理输入，配置函数检查生成后的事实一致性，并配置函数拆分 A/B 测试流量。将用户反馈存储在 Amazon DynamoDB 中；通过 AWS CloudTrail 写入审计日志；将日志存储在 Amazon S3 并启用 S3 Object Lock；使用 Amazon SageMaker Model Monitor 持续跟踪数据漂移和输出异常。
+- **D.** 构建基于 Amazon Lex 的聊天式 AI 助手，通过别名将一定比例的查询路由到两个 Amazon SageMaker AI 端点以生成推荐。将交互记录到 Amazon CloudWatch Logs，按季度人工审核幻觉和提示注入，并将反馈加密存储在 Amazon RDS 中。
+
+### English
+
+A financial company is building an AI-powered recommendation system. The system uses real-time market data and verified internal documents. The system must include evaluation capabilities that collect explicit user ratings and detect problematic responses in real time. The system must include evaluation capabilities that track model performance over time and support A/B testing of different prompt or model variants. The system must orchestrate multi-step workflows. The workflows must retrieve trusted knowledge, validate inputs, and generate recommendations. The system must securely store all user feedback, flagged events, and audit logs in a compliance-ready immutable repository. The repository must be write-once, tamper-evident storage that is suitable for regulated audit retention. Which architecture will meet these requirements?
+---
+
+- **A.** Deploy a fine-tuned FM on Amazon SageMaker JumpStart. Use Amazon Bedrock AgentCore to orchestrate input validation and retrieval workflows. Store user feedback and flagged queries in Amazon DynamoDB. Run scheduled Amazon Athena queries on AWS CloudTrail logs for anomaly detection. Store generated outputs in encrypted Amazon S3 buckets. Enable S3 Object Lock.
+- **B.** Configure Amazon API Gateway to invoke an Amazon Bedrock FM that retrieves from Amazon Kendra. Store all responses in encrypted Amazon S3 buckets. Enable S3 Object Lock. Use Amazon Macie to scan stored logs for problematic content.
+- **C.** Use Amazon Bedrock AgentCore to orchestrate retrieval from curated Amazon Kendra indexes. Configure an AWS Lambda function to sanitize input. Configure a function to check post-generation fact consistency. Configure a function to split traffic for A/B testing. Store user feedback in Amazon DynamoDB. Write audit logs through AWS CloudTrail. Store the logs in Amazon S3. Enable S3 Object Lock. Use Amazon SageMaker Model Monitor to track data drift and output anomalies continuously.
+- **D.** Build an Amazon Lex chat-based AI assistant with aliases that route a percentage of queries to two Amazon SageMaker AI endpoints for recommendations. Log interactions to Amazon CloudWatch Logs. Conduct quarterly manual audits for hallucination and prompt-injection detection. Store feedback in Amazon RDS with encryption.
+
+**Correct Answer / 正确答案:** `C`
+
+**Community vote distribution / 社区投票分布:**
+
+
+---
+
+## Question 123 - Topic 1
+
+### 中文
+
+一家零售公司拥有一个使用 Amazon Bedrock 基础模型（FM）的产品推荐系统。系统处理并搜索数百万个每小时更新的产品嵌入向量，公司还会定期添加新产品。
+
+在购物高峰活动期间，当前解决方案在整个产品目录中执行相似性搜索时出现高延迟和偶发故障。公司必须解决性能问题。哪种解决方案能够满足要求？
+---
+
+- **A.** 使用多节点架构实施 Amazon OpenSearch Service。配置向量专用索引设置和内存断路器，并建立专用向量操作队列，以处理高峰期间的突发容量需求。
+- **B.** 部署使用稀疏向量压缩的 Amazon DynamoDB 表。实施并行查询执行器处理搜索操作，并配置 DynamoDB Streams 和 AWS Lambda 函数实时维护向量索引。
+- **C.** 设置使用自定义向量分区的 Amazon Bedrock 知识库。实现分层元数据结构，并将知识库集成到 Amazon EventBridge，以提供同步的目录更新并生成向量。
+- **D.** 部署带有专用向量端点的 Amazon Neptune 集群。配置自定义相似度计算函数，并使用 Neptune 批量加载器 API 管理整个产品目录的向量更新。
+
+### English
+
+A retail company has a product recommendation system that uses a foundation model (FM) in Amazon Bedrock. The system processes and searches millions of product embeddings that are updated hourly. The company regularly adds new products. During peak shopping events, the current solution experiences high latency and occasional failures when the system performs similarity searches across the product catalog. The company must resolve the performance issues. Which solution will meet this requirement?
+---
+
+- **A.** Implement Amazon OpenSearch Service with a multi-node architecture. Configure vector-specific index settings and memory circuit breakers. Establish dedicated vector operation queues to handle surge capacity during peak usage events.
+- **B.** Deploy an Amazon DynamoDB table that uses sparse vector compression. Implement parallel query executors to handle search operations. Configure DynamoDB Streams and AWS Lambda functions to maintain the vector index in real time.
+- **C.** Set up an Amazon Bedrock knowledge base that uses custom vector partitioning. Implement hierarchical metadata structures. Integrate the knowledge base with Amazon EventBridge to provide synchronized catalog updates and to generate vectors.
+- **D.** Deploy an Amazon Neptune cluster with specialized vector endpoints. Configure custom similarity computation functions. Use the Neptune bulk loader API to manage vector updates across the product catalog.
+
+**Correct Answer / 正确答案:** `A`
+
+**Community vote distribution / 社区投票分布:**
+
+
+---
+
+## Question 124 - Topic 1
+
+### 中文
+
+一家医疗机构正在开发一个使用基础模型（FM）处理敏感患者数据并生成治疗摘要的应用。应用必须维护所有提示和补全内容的审计跟踪，并在整个处理生命周期内安全处理受保护健康信息（PHI）。公司必须跟踪包含原始患者数据的每一对提示和补全内容，但必须从存储记录中删除任何 PHI，同时还必须执行医疗行业特定的数据保留策略。哪种解决方案能够满足这些要求？
+---
+
+- **A.** 将提示-补全对存储在 Amazon S3 中并启用默认服务器端加密。部署 AWS Lambda 函数，使用 Amazon Comprehend Medical 扫描记录，并配置 Lambda 函数在规定的保留期限后删除 PHI 数据。
+- **B.** 使用 Amazon Bedrock Prompt Management 和 Amazon Bedrock Flows 检测 PHI。配置 Amazon Bedrock Guardrails 使用敏感信息过滤器自动掩码 PHI。将日志存储在 Amazon S3 中，并配置适当的保留设置。
+- **C.** 将提示-补全对存储在 Amazon S3 中。配置合规模式的 S3 Object Lock，并对 PHI 数据应用基于标签的 S3 Lifecycle 策略。配置 AWS Lambda 函数，在应用处理数据后重新删除患者信息。
+- **D.** 将患者数据存储在 Amazon Bedrock 知识库中。使用 Amazon Comprehend Medical 识别 PHI，并配置 AWS Lambda 函数根据医疗政策管理数据保留。
+
+### English
+
+A healthcare company is developing an application that processes sensitive patient data and generates treatment summaries by using a foundation model (FM). The application must maintain an audit trail of all prompts and completions. The application must securely handle protected health information (PHI) data throughout the processing lifecycle. The company must track all prompt-completion pairs with original patient data, but the company must redact any PHI from stored records. The company must enforce healthcare-specific data retention policies. Which solution will meet these requirements?
+---
+
+- **A.** Store prompt-completion pairs in Amazon S3 and enable default server-side encryption. Deploy an AWS Lambda function that scans records by using Amazon Comprehend Medical. Configure the Lambda function to delete PHI data after a required retention period.
+- **B.** Use Amazon Bedrock Prompt Management and Amazon Bedrock Flows to detect PHI. Configure Amazon Bedrock Guardrails to use sensitive information filters to mask PHI automatically. Store logs in Amazon S3 and configure appropriate retention settings.
+- **C.** Store prompt-completion pairs in Amazon S3. Configure S3 Object Lock in compliance mode. Apply tag-based S3 Lifecycle policies to PHI data. Configure an AWS Lambda function to redact patient information after the application processes the data.
+- **D.** Store patient data in an Amazon Bedrock knowledge base. Use Amazon Comprehend Medical to identify PHI. Configure an AWS Lambda function to manage data retention according to healthcare policies.
+
+**Correct Answer / 正确答案:** `B`
+
+**Community vote distribution / 社区投票分布:**
+
+
+---
+
+## Question 125 - Topic 1
+
+### 中文
+
+一家金融服务公司运行一个使用 Amazon Bedrock 基础模型（FM）并基于客户文档生成个性化投资建议的 AI 应用。该应用处理客户投资组合、财务报表和监管文档，以生成个性化建议。
+
+由于数据质量较差，公司遇到模型性能不一致的问题。一些文档包含公司必须删除的个人身份信息（PII），另一些文档存在会使 FM 困惑的格式不一致。公司需要一种能够提供一致、高质量输入以优化 FM 的方案，同时满足金融法规和 PII 处理政策。哪种解决方案能够以**最低的运维开销**满足要求？
+---
+
+- **A.** 使用 Amazon Macie 自动检测并删除 PII。使用 AWS Lambda 函数和 Amazon Textract 强制执行标准文档格式，并创建能够适应单个文档架构的动态提示，以提高模型一致性。
+- **B.** 使用 Amazon Comprehend 的自定义实体识别检测 PII。使用 AWS Step Functions 编排文档预处理工作流，并使用带条件逻辑的提示模板有效处理架构差异。
+- **C.** 使用 Amazon Bedrock Guardrails 在推理期间过滤 PII。使用预处理 AWS Lambda 函数标准化文档格式，并使用少样本提示技术和标准化示例，提高模型在不同文档类型上的性能。
+- **D.** 使用 Amazon Textract 分析文档结构并提取文本。使用 Amazon Comprehend 检测 PII 并分析情感；设计使用结构化元数据的提示工程策略，以改善 FM 推理并减少幻觉。
+
+### English
+
+A financial services company runs an AI application that uses Amazon Bedrock foundation models (FMs) to generate personalized investment recommendations based on customer documents. The AI application processes customer portfolios, financial statements, and regulatory documentation to create personalized recommendations. The company is experiencing inconsistent model performance because of poor data quality. Some documents contain personally identifiable information (PII) that the company must redact. Other documents contain formatting inconsistencies that confuse the FMs. The company needs a solution that ensures consistent, high-quality inputs to optimize FM. The solution must comply with financial regulations and PII handling policies. Which solution will meet these requirements with the LEAST operational overhead?
+---
+
+- **A.** Use Amazon Macie to automatically detect and redact PII. Use AWS Lambda functions and Amazon Textract to enforce standard document formatting. Create dynamic prompts that adapt to individual document schemas to improve model consistency.
+- **B.** Use Amazon Comprehend to detect PII by using custom entity recognition. Use AWS Step Functions to orchestrate document preprocessing workflows. Use prompt templates with conditional logic to handle schema variations effectively.
+- **C.** Use Amazon Bedrock Guardrails to filter out PII during inference. Use pre-processing AWS Lambda functions to standardize document formatting. Use few-shot prompting techniques and standardized examples to improve model performance across document types.
+- **D.** Use Amazon Textract to analyze document structures and extract text. Use Amazon Comprehend to detect PII and analyze sentiment. Design prompt engineering strategies that use structured metadata to improve FM reasoning and reduce hallucinations.
+
+**Correct Answer / 正确答案:** `C`
+
+**Community vote distribution / 社区投票分布:**
+
+
+---
+
+## Question 126 - Topic 1
+
+### 中文
+
+一家全球性公司使用 AWS Organizations 管理 25 个 AWS 账户。公司的产品每天有 50,000 次用户交互，目前使用 Amazon Bedrock AgentCore 构建 AI 助手。
+
+该 AI 助手必须访问分布在多个业务部门 AWS 账户中的客户数据，并代表特定用户，通过查询每个业务部门账户中的 Amazon DynamoDB 表执行操作。每个业务部门维护自己的 AWS 账户和 DynamoDB 表。
+
+公司必须强制执行严格的数据访问安全边界，并收集完整的审计跟踪，显示每个操作使用了哪位用户的凭证。方案必须允许 AgentCore 应用跨多个账户访问资源，同时保留用户身份上下文，并支持公司下一年扩展到 40 多个 AWS 账户的计划。哪种解决方案能够以**最低的运维开销**满足要求？
+---
+
+- **A.** 配置 AI 助手使用出站凭证提供程序，通过运行 `AssumeRole` 操作动态获取临时凭证，以便访问跨账户资源。在每个业务部门账户中创建 IAM 角色，使其信任 AI 助手的执行角色，并授予访问 DynamoDB 表的权限。确保 `AssumeRole` 调用包含用于识别最终用户的会话标签。
+- **B.** 在每个业务部门账户中创建独立的 AI 助手。部署运行请求路由逻辑的 Amazon API Gateway REST API，并创建 AWS Lambda 授权方，根据请求上下文中的客户业务部门标识符将用户查询定向到适当的 AI 助手。
+- **C.** 使用 AWS Resource Access Manager（AWS RAM）将每个业务部门账户中的 DynamoDB 表共享到 AI 助手运行的中央账户。配置 AWS RAM 权限以允许跨账户访问 DynamoDB 表，并授予 AgentCore 执行角色直接访问共享资源的权限。
+- **D.** 配置 SCP，明确允许 AI 助手的执行角色主体在所有成员账户中执行 `dynamodb:GetItem` 和 `dynamodb:Query` 操作。配置 AI 助手在其资源定义中直接引用跨账户 DynamoDB 表 ARN。
+
+### English
+
+A global company uses an organization in AWS Organizations to manage 25 AWS accounts. The company’s products have 50,000 daily user interactions. The company is using Amazon Bedrock AgentCore to build an AI assistant. The AI assistant must access customer data that is stored in multiple AWS accounts across several business units. The AI assistant needs to perform actions on behalf of specific users by querying Amazon DynamoDB tables that contain customer information in each business unit's AWS account. Each business unit maintains its own AWS account that hosts its own DynamoDB tables. The company must enforce strict data access security boundaries and must collect full audit trails that show which user’s credentials are used to perform each action. The solution must allow the AgentCore application to access resources across multiple accounts while preserving user identity context. The solution must support the company’s plan to expand to more than 40 AWS accounts in the next year. Which solution will meet these requirements with the LEAST operational overhead?
+---
+
+- **A.** Configure the AI assistant to use an outbound credential provider that runs `AssumeRole` operations to dynamically obtain temporary credentials so the AI assistant can access resources across accounts. Create an IAM role in each business unit account that has a trust relationship to the AI assistant’s execution role and permissions to access the DynamoDB tables. Ensure that `AssumeRole` calls include session tags to identify the end user.
+- **B.** Create a separate AI assistant in each business unit account. Deploy an Amazon API Gateway REST API that runs request routing logic. Create AWS Lambda authorizers to direct user queries to the appropriate AI assistant based on the customer’s business unit identifier from the request context.
+- **C.** Use AWS Resource Access Manager (AWS RAM) to share the DynamoDB tables from each business unit account to a central account where the AI assistant runs. Configure AWS RAM permissions to allow cross-account access to the DynamoDB tables. Grant the AgentCore execution role permissions to access the shared resources directly.
+- **D.** Configure SCPs for the organization to explicitly allow the AI assistant’s execution role principal to perform `dynamodb:GetItem` and `dynamodb:Query` actions across all member accounts. Configure the AI assistant to reference cross-account DynamoDB table ARNs directly in their resource definitions.
+
+**Correct Answer / 正确答案:** `A`
+
+**Community vote distribution / 社区投票分布:**
+
+
+---
+
+## Question 127 - Topic 1
+
+### 中文
+
+一家医院正在构建 AI 应用，帮助临床医生做出治疗决策。应用使用 Amazon Bedrock 分析患者病历并建议诊断。应用必须保持低于 500 毫秒的响应时间，以接入医院现有的实时临床工作流。为遵守隐私法规，应用必须记录所有 PII 处理决策以供审计，并以至少 99% 的准确率检测和删除响应中的 PII。
+
+初始部署后，临床医生报告应用偶尔会在诊断摘要中包含原始病例历史中不存在的患者姓名和病历编号。调查发现，Amazon Comprehend Medical 能够以 95% 的准确率成功检测并删除输入中的 PII，应用会在将输入发送到 Amazon Bedrock 前用令牌替换所有检测到的实体。然而，应用仍会在约 3%-5% 的输出中生成患者身份信息。
+
+公司需要一种方案，防止应用在满足其他所有运维要求的同时向用户显示 PII。哪种解决方案能够满足这些要求？
+---
+
+- **A.** 配置 Amazon Bedrock Guardrails，使用敏感信息过滤器检测并阻止模型输出中的 PII。
+- **B.** 在将输入发送到 Amazon Bedrock 之前，使用正则表达式和自定义实体识别实现第二层 PII 检测，以检测 Amazon Comprehend Medical 遗漏的标识符。
+- **C.** 在预处理期间删除病例历史中的详细医疗上下文，防止模型基于临床模式关联生成特定患者信息。
+- **D.** 启用 Amazon Bedrock API 调用的会话隔离。清除请求之间的会话历史，防止患者信息在不同病例分析之间持久存在。
+
+### English
+
+A hospital is building an AI application to help medical clinicians to make treatment decisions. The application uses Amazon Bedrock to analyze patient case histories and suggest diagnoses. The application must maintain sub-500 ms response times to integrate with the hospital’s existing real-time clinical workflow. To comply with privacy regulations, the application must log all personally identifiable information (PII) handling decisions for audits. The application must detect and remove PII from responses with at least 99% accuracy. After initial deployment, clinicians report that diagnostic summaries from the application occasionally include patient names and medical record numbers that were not present in the original case history inputs. An investigation reveals that Amazon Comprehend Medical successfully detects and removes PII from inputs with 95% accuracy, and the application replaces all detected entities with tokens before it sends inputs to Amazon Bedrock. However, the application continues to generate patient-identifying information in approximately 3-5% of outputs. The company needs a solution to prevent the application from displaying PII in outputs while meeting all other operational requirements. Which solution will meet these requirements?
+---
+
+- **A.** Configure Amazon Bedrock Guardrails with sensitive information filters to detect and block PII in model outputs.
+- **B.** Implement a secondary PII detection layer by using regular expressions and custom entity recognition to detect identifiers that Amazon Comprehend Medical misses before sending inputs to Amazon Bedrock.
+- **C.** Remove detailed medical context from case histories during pre-processing to prevent the model from generating patient-specific information based on clinical pattern associations.
+- **D.** Enable session isolation in Amazon Bedrock API calls. Clear conversation history between requests to prevent patient information from persisting across multiple case analyses.
+
+**Correct Answer / 正确答案:** `A`
+
+**Community vote distribution / 社区投票分布:** `A (100%)`
 
 
 ---

@@ -144,7 +144,7 @@ $english = Get-QuestionBlocks -Path $EnglishPath -HeadingPattern '^##\s+Question
 $inputLines = @(Get-Content -LiteralPath $ChinesePath -Encoding UTF8)
 if ($inputLines | Where-Object { $_ -match '^##\s+题目\s+\d+' }) {
     $chinese = Get-QuestionBlocks -Path $ChinesePath -HeadingPattern '^##\s+题目\s+\d+'
-    if ($chinese.Count -ne $english.Count -or $chinese.Count -ne 117) {
+    if ($chinese.Count -ne $english.Count) {
         throw "Question count mismatch: Chinese=$($chinese.Count), English=$($english.Count)"
     }
     $pairs = foreach ($number in ($english.Keys | Sort-Object {[int]$_})) {
@@ -152,19 +152,25 @@ if ($inputLines | Where-Object { $_ -match '^##\s+题目\s+\d+' }) {
     }
 } else {
     $existing = Get-BilingualQuestionBlocks -Path $ChinesePath
-    if ($existing.Count -ne $english.Count -or $existing.Count -ne 117) {
-        throw "Bilingual question count mismatch: Existing=$($existing.Count), English=$($english.Count)"
+    if ($existing.Count -lt $english.Count) {
+        throw "Bilingual question count mismatch: Existing=$($existing.Count), English source=$($english.Count)"
     }
-    $pairs = foreach ($number in ($english.Keys | Sort-Object {[int]$_})) {
+    $pairs = foreach ($number in ($existing.Keys | Sort-Object {[int]$_})) {
         $current = $existing[$number]
         $source = $english[$number]
-        if ($current.OptionsZh.Count -ne $source.Options.Count -or $current.OptionsEn.Count -ne $source.Options.Count) {
-            throw "Question $number option count mismatch between bilingual and English source"
+        if ($null -ne $source) {
+            if ($current.OptionsZh.Count -ne $source.Options.Count -or $current.OptionsEn.Count -ne $source.Options.Count) {
+                throw "Question $number option count mismatch between bilingual and English source"
+            }
+            if ($current.Answer -ne $source.Answer) {
+                throw "Question $number answer mismatch between bilingual and English source"
+            }
         }
+        $votes = if ($null -ne $source) { $source.Votes } else { $current.Votes }
         [pscustomobject]@{
             Number = $number
             Chinese = [pscustomobject]@{ Text = $current.TextZh; Options = $current.OptionsZh; Answer = $current.Answer }
-            English = [pscustomobject]@{ Text = $current.TextEn; Options = $current.OptionsEn; Answer = $current.Answer; Votes = $source.Votes }
+            English = [pscustomobject]@{ Text = $current.TextEn; Options = $current.OptionsEn; Answer = $current.Answer; Votes = $votes }
         }
     }
 }
