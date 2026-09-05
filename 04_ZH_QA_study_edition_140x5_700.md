@@ -1,6 +1,6 @@
-# Pushpay Senior SRE — 112 个主题 × 5 道简答题（中文版 Study Edition）
+# Pushpay Senior SRE — 140 个主题 × 5 道简答题（中文版 Study Edition）
 
-> **共 560 道简答题，每题包含问题与参考答案。**
+> **共 700 道简答题，每题包含问题与参考答案。**
 
 每个 Topic 严格按照以下五层展开：
 
@@ -4967,6 +4967,1250 @@ DB CPU 只反映正在执行的 work。caller 在应用 pool queue 中等待时�
 **参考答案：**
 
 从 DB global connection budget 反推每 replica pool，设置 bounded pool、short transaction、acquisition/query timeout、leak detection 和 backpressure；autoscaling 不应无限放大 DB connections。
+
+---
+
+# 15 — SRE Scripting 与 Operational Coding
+
+## Q113 — Bash 执行模型与安全 Shell 设置
+
+### Q113.1 — 基础定义
+
+**问题：** Bash 中 exit code、`set -e`、`set -u`、`set -o pipefail` 分别做什么？
+
+**参考答案：**
+
+Unix process 通常以 0 表示成功、非 0 表示失败。`set -e` 会在很多未处理失败时退出，`set -u` 把未定义变量当错误，`set -o pipefail` 让 pipeline 中任一命令失败都能使整个 pipeline 失败，而不是只看最后一个命令。
+
+### Q113.2 — 内部机制
+
+**问题：** 为什么 `set -e` 在 conditionals、pipelines、subshells 和 command substitutions 中仍可能出现反直觉行为？
+
+**参考答案：**
+
+`set -e` 的行为依赖语法上下文。Bash 在某些用于判断状态的 construct 中会抑制它，subshell 和 command substitution 也可能改变传播语义，所以它不能替代关键操作的显式错误检查。
+
+### Q113.3 — 生产场景
+
+**问题：** 你接手一个 deployment script，某个命令失败后脚本仍然静默继续。如何让 failure handling 更明确、更可观测？
+
+**参考答案：**
+
+可使用合适的 strict mode，同时对 destructive steps 做显式 validation，错误写到 stderr，加入结构化日志和 `trap` cleanup。关键命令应明确 retry、abort 或 compensate，而不是完全依赖 shell 隐式退出规则。
+
+### Q113.4 — 故障排查
+
+**问题：** 一个 Bash script 本地正常，但 CI 中偶发提前退出。你会如何 debug？
+
+**参考答案：**
+
+比较 shell version、environment variables、working directory、permissions、PATH、mounted files、secrets 和 runner image。必要时使用 `set -x`，但先确保不会泄露 secrets，并尽量在相同 CI image/container 中复现。
+
+### Q113.5 — Senior Trade-off / Edge Case
+
+**问题：** 哪些 shell scripting practices 值得标准化？什么时候应该停止用 Bash，改用通用编程语言？
+
+**参考答案：**
+
+标准化 quoting、严格变量处理、functions、readonly config、安全 tempfile、trap、bounded retry 和 ShellCheck。Bash 适合 orchestration；一旦逻辑变成 stateful、concurrent、测试复杂或数据结构较重，Python/Go/Java 更安全。
+
+---
+
+## Q114 — grep / awk / sed / jq / xargs 流式处理
+
+### Q114.1 — 基础定义
+
+**问题：** 在 SRE workflow 中，什么时候分别使用 `grep`、`awk`、`sed`、`jq` 和 `xargs`？
+
+**参考答案：**
+
+`grep` 适合过滤文本，`awk` 适合按字段解析和聚合，`sed` 适合流式文本变换，`jq` 适合结构化 JSON，`xargs` 把输入转成命令参数或受控并行任务。应根据数据格式和 correctness 要求选工具。
+
+### Q114.2 — 内部机制
+
+**问题：** 为什么 Unix pipeline 可以处理大文件而不一次性加载到内存？哪些地方仍可能因为 buffering 出问题？
+
+**参考答案：**
+
+多数 Unix text tools 是逐行/逐块 streaming，所以 memory 可以保持有界。但 sort、grouping、某些 `awk` map、应用 buffering 或 downstream command 仍可能积累大量状态；producer 比 consumer 快时 pipe 也会阻塞。
+
+### Q114.3 — 生产场景
+
+**问题：** 有一个 50GB log file，需要找出 error 最多的 endpoints，同时不能 OOM。你怎么做？
+
+**参考答案：**
+
+先尽早 filter，只解析必要字段，按 bounded endpoint key 做计数，再只对较小 summary 排序。结构化日志优先 `jq` 或专门脚本，而不是 regex。若 endpoint cardinality 极高，可使用 external sort 或 disk-backed aggregation。
+
+### Q114.4 — 故障排查
+
+**问题：** 一个 pipeline 遇到包含空格、换行或特殊字符的 filename 就坏了，怎么修？
+
+**参考答案：**
+
+使用 NUL-delimited 方式，如 `find -print0` 配 `xargs -0`，变量 expansion 始终 quote，不要 parse `ls`，把 path 当 data 而不是 shell syntax。JSON 应交给 `jq` 解析。
+
+### Q114.5 — Senior Trade-off / Edge Case
+
+**问题：** 复杂 one-liner 与小型 tested script 在 correctness 和 maintainability 上怎么取舍？
+
+**参考答案：**
+
+one-liner 很适合 incident triage 和探索，但太密的 shell pipeline 难测试、难 review、错误处理弱。只要成为 business-critical 或包含复杂 branching/state，就应升级成可读、可测试程序。
+
+---
+
+## Q115 — Process、Signal、Pipe 与 Subprocess 控制
+
+### Q115.1 — 基础定义
+
+**问题：** Unix shell 中 foreground jobs、background jobs、pipes、process groups 和 signals 是什么关系？
+
+**参考答案：**
+
+shell 会创建 processes，并常把一个 pipeline 的相关 processes 放入同一 process group。foreground group 会接收 terminal signals；pipe 把一个 process 的 stdout 接到另一个 stdin；signals 用于异步控制，如 TERM、INT。
+
+### Q115.2 — 内部机制
+
+**问题：** pipeline 中一个 process 提前退出，而另一个还在写，会发生什么？
+
+**参考答案：**
+
+如果 reader 先退出，writer 之后写 pipe 可能收到 SIGPIPE 或 EPIPE；如果 writer 先结束，等所有 write descriptors 关闭后 reader 会看到 EOF。不能假设 pipeline 所有 component 都成功完成。
+
+### Q115.3 — 生产场景
+
+**问题：** automation script 在 deployment 中被 terminate，但它启动的 child processes 还在运行，会有什么风险？
+
+**参考答案：**
+
+children 可能继续修改 infrastructure、持有 locks 或留下 partial state。parent 应定义清楚 ownership、signal forwarding、wait/reap 和 completion state，不能让 child 成为无人管理的副作用。
+
+### Q115.4 — 故障排查
+
+**问题：** 一个 subprocess 看起来 hang，但 parent 仍正常运行。怎么诊断？
+
+**参考答案：**
+
+用 `ps`、`pstree`、`/proc`、必要时 `strace`，查看 open FDs、wait channel 和 child states，判断是在等 I/O、child、lock、pipe、DNS/network，还是某个没有 timeout 的外部命令。
+
+### Q115.5 — Senior Trade-off / Edge Case
+
+**问题：** production automation 应如何管理 cancellation、timeouts、cleanup 和 process ownership？
+
+**参考答案：**
+
+使用 explicit deadlines、process groups、先 TERM 后 bounded KILL、trap/finally cleanup、idempotent cleanup，并对 destructive workflow 保存 durable progress state。取消后系统应处于可恢复状态。
+
+---
+
+## Q116 — 可靠 SRE Automation：Retry、Timeout、Locking、Idempotency
+
+### Q116.1 — 基础定义
+
+**问题：** 什么特征让一个 operational script 可以安全 rerun？
+
+**参考答案：**
+
+安全 rerun 的工具应有显式 preconditions、idempotent 或可 deduplicate side effects、确定性 inputs、清晰 state transitions，并在 mutate 前读取当前 remote state。重复执行应趋向同一 desired state，而不是重复副作用。
+
+### Q116.2 — 内部机制
+
+**问题：** retry、timeout、jitter 和 idempotency 在 automation 中如何互相作用？
+
+**参考答案：**
+
+timeout 限制等待，retry 应对 transient failure，jitter 防止同步重试，idempotency 让 retry 安全。若 non-idempotent request 出现 ambiguous timeout，必须用 request key、state query 或 reconciliation 避免重复副作用。
+
+### Q116.3 — 生产场景
+
+**问题：** 同一个 maintenance job 可能并发运行两个实例，如何避免 unsafe overlap？
+
+**参考答案：**
+
+优先采用单 scheduler/queue ownership。如果必须协调，可使用具有 ownership/expiry semantics 的可靠锁，同时让受保护操作本身尽量能抵抗 stale holder。
+
+### Q116.4 — 故障排查
+
+**问题：** 脚本调用 cloud API 后 timeout，但不知道 remote operation 是否成功。怎么安全恢复？
+
+**参考答案：**
+
+把结果视为 unknown，而不是 failed。使用稳定 operation/resource ID 查询 provider 真实状态，对比 desired vs actual，再决定继续、adopt 已完成 operation 或 compensate，绝不能盲目重复不可逆请求。
+
+### Q116.5 — Senior Trade-off / Edge Case
+
+**问题：** production-grade automation 与 throwaway script 的核心区别是什么？
+
+**参考答案：**
+
+production tool 应有 structured logs、合理的 dry-run、tests、bounded concurrency、timeouts、retries、idempotency、明确 exit codes、metrics/auditability、least privilege 和 documented recovery path。
+
+---
+
+## Q117 — Operational Coding 的数据结构与复杂度
+
+### Q117.1 — 基础定义
+
+**问题：** SRE 在 coding interview 和 automation 中至少应熟悉哪些基础数据结构？
+
+**参考答案：**
+
+至少应熟悉 array/list、hash map/dictionary、set、queue/deque、stack、heap/priority queue，以及基础 tree/graph。重点不是背定义，而是根据 lookup、ordering、dedup 和 streaming 需求选择结构。
+
+### Q117.2 — 内部机制
+
+**问题：** time/space complexity 如何影响处理百万级 records 的 operational tool？
+
+**参考答案：**
+
+O(n²) 在数据量扩大后可能完全不可用，而不必要保留 O(n) 状态也可能造成 memory pressure。operational program 应先估计输入规模，再决定是否需要 streaming/bounded-memory。
+
+### Q117.3 — 生产场景
+
+**问题：** 需要找出 error 最多的 top 100 hosts，你会选择什么数据结构？
+
+**参考答案：**
+
+若 host cardinality 可控，可用 hash map 保存 host→count，再用大小为 100 的 min-heap 保留 top K。若 cardinality 极大，应考虑 external aggregation 或 approximate heavy-hitter 方法。
+
+### Q117.4 — 故障排查
+
+**问题：** 脚本从 1 万 records 扩到 1000 万后突然很慢，如何判断是不是 algorithmic complexity？
+
+**参考答案：**
+
+对多个输入规模做 benchmark/profile，观察增长曲线，重点检查 nested scans、重复 sort、string copying、network round trips 和 data structure 操作，而不是先做低层微优化。
+
+### Q117.5 — Senior Trade-off / Edge Case
+
+**问题：** 什么时候理论上更优的 algorithm 反而不是 production 最佳选择？
+
+**参考答案：**
+
+当数据规模小、实现复杂度和 correctness risk 更高、成熟 library 已足够时，简单 O(n log n) 可能优于复杂 O(n)。production 优化的是总风险和总成本，不是只追 Big-O。
+
+---
+
+## Q118 — 超大文件 Streaming 与 OOM 避免
+
+### Q118.1 — 基础定义
+
+**问题：** 如何处理比可用内存更大的文件？
+
+**参考答案：**
+
+按 bounded chunks/records 增量读取，每条处理完及时释放，只保存必要且有界的 aggregate state，不把原始数据全留在内存。
+
+### Q118.2 — 内部机制
+
+**问题：** streaming、memory mapping 和一次性 load 整个 file 有什么区别？
+
+**参考答案：**
+
+整文件 load 会把全部内容 materialize 到 process memory；streaming 只保留当前 chunk；mmap 让 OS 按需 page file regions，但 address space 和 page cache 仍可能很大，并不等于自动 bounded memory。
+
+### Q118.3 — 生产场景
+
+**问题：** 要解析 200GB newline-delimited JSON 并统计每日 errors，怎么设计？
+
+**参考答案：**
+
+逐行读取、结构化解析 JSON，只按 day/status 等有界 key 聚合，周期 checkpoint 并输出 partial result。并行度由 CPU/I/O 决定，同时要保证 record boundary correctness。
+
+### Q118.4 — 故障排查
+
+**问题：** 程序明明是 streaming，但运行几小时后 memory 仍缓慢增长。查什么？
+
+**参考答案：**
+
+检查 unbounded map/set、保留 parsed objects、cache、exception buffers、logging queue、closure capture、allocator fragmentation，以及某些 library 是否内部批量缓存。
+
+### Q118.5 — Senior Trade-off / Edge Case
+
+**问题：** 如何让任务失败后可以 resume，而不是从头重跑？
+
+**参考答案：**
+
+保存 checkpoint，例如 byte offset + source identity/hash，或把输入切成 immutable chunks 并记录 completion markers。输出要 idempotent，重跑某 chunk 不应 double-count。
+
+---
+
+## Q119 — 可靠的 HTTP API Client
+
+### Q119.1 — 基础定义
+
+**问题：** production SRE HTTP client 除了“能调用接口”之外还应该处理什么？
+
+**参考答案：**
+
+应验证 TLS、使用 bounded timeouts、连接池、明确 redirect 行为、解析 errors、尊重 rate limits、只 retry 安全 transient failures、支持 idempotency，并输出 metrics/logs，同时保护 credentials。
+
+### Q119.2 — 内部机制
+
+**问题：** connect timeout、read timeout、total deadline、retry、connection pooling 有什么区别？
+
+**参考答案：**
+
+connect timeout 限制建立连接时间；read timeout 限制等待数据；total deadline 限制整个 logical operation 包括 retries；pooling 复用连接，减少 TCP/TLS handshake。
+
+### Q119.3 — 生产场景
+
+**问题：** automation client 面对 rate-limited API，应如何处理 429 和 transient 5xx？
+
+**参考答案：**
+
+尊重 `Retry-After`（若提供），使用 exponential backoff + jitter，限制 attempts 和总 deadline，并降低 concurrency。只 retry 已知 safe 或有 idempotency key 保护的操作。
+
+### Q119.4 — 故障排查
+
+**问题：** client 在 timeout 后偶尔创建 duplicate resources，如何诊断并修复？
+
+**参考答案：**
+
+第一次 request 可能已成功，只是 response 丢了。通过 request ID、audit log 和 server-side resource state 关联，增加稳定 idempotency key 或 query-before-retry/reconciliation。
+
+### Q119.5 — Senior Trade-off / Edge Case
+
+**问题：** 如何安全管理 credentials，并让 client 可观测但不泄露 secrets？
+
+**参考答案：**
+
+使用 secret/identity provider 的短期 credentials，不记录 token，redact 敏感 headers/body，只记录 request ID/status/latency，并暴露 retry/rate-limit metrics。TLS verification 不应被关闭。
+
+---
+
+## Q120 — Worker Pool、Rate Limit 与 Backpressure
+
+### Q120.1 — 基础定义
+
+**问题：** 为什么 bounded worker pool 通常比每个 task 创建一个 thread/process 更安全？
+
+**参考答案：**
+
+bounded pool 可以限制 CPU、memory、file descriptors 和 downstream concurrency。unbounded spawning 会把 load spike 直接转化为资源耗尽。
+
+### Q120.2 — 内部机制
+
+**问题：** concurrency limiting、rate limiting 和 backpressure 有什么区别？
+
+**参考答案：**
+
+concurrency limit 控制同时 in-flight 数量；rate limit 控制单位时间工作量；backpressure 把 downstream saturation 反馈给 producer，让它减速或保持 queue 有界。
+
+### Q120.3 — 生产场景
+
+**问题：** maintenance tool 的处理速度快于 downstream API 限制，worker model 怎么设计？
+
+**参考答案：**
+
+使用 bounded queue/worker count、token bucket/leaky bucket rate limiter、per-request deadline、带 jitter 的 retry scheduling，并监控 queue age、throughput、errors 和 429。
+
+### Q120.4 — 故障排查
+
+**问题：** queue 长度持续增长，但 workers 看起来健康。如何决定 scale、throttle producers 还是 shed work？
+
+**参考答案：**
+
+比较 arrival rate、service rate、queue age、worker utilization、downstream saturation 和业务 deadline。只有 downstream 还有容量时 scale，否则应减 producer 或 defer/shed 低优先级任务。
+
+### Q120.5 — Senior Trade-off / Edge Case
+
+**问题：** 给 worker pool 加 retry 后会出现哪些 failure modes？
+
+**参考答案：**
+
+retry 可能占满 workers、改变顺序、放大 queue pressure 并饿死新任务。应使用独立 delayed retry scheduling、retry budget、DLQ，并确保 task idempotent。
+
+---
+
+## Q121 — Operational CLI 的 Testing 与 UX
+
+### Q121.1 — 基础定义
+
+**问题：** 如何组织一个小型 production CLI，使其容易测试？
+
+**参考答案：**
+
+把 argument parsing、domain logic、side-effect adapters 和 output formatting 分离。核心逻辑尽量 deterministic，可注入 clock/client，深层函数返回 errors，而不是直接 `exit`。
+
+### Q121.2 — 内部机制
+
+**问题：** 哪些部分适合 unit test，哪些适合 integration test？
+
+**参考答案：**
+
+unit test 解析、validation、state transitions、retry decision 和纯逻辑；integration test 真实 serialization、auth、network/API contract、filesystem 和关键 provider interactions。
+
+### Q121.3 — 生产场景
+
+**问题：** CLI 在 mocks 下通过，但真实 cloud API 失败，说明什么？
+
+**参考答案：**
+
+说明 mock 模型不真实，可能漏掉 auth、pagination、eventual consistency、rate limit 或 error semantics。应补 contract/integration coverage，而不是把 mock 做得更复杂。
+
+### Q121.4 — 故障排查
+
+**问题：** 如何测试 timeout、partial success、retry、SIGTERM 和 duplicate execution？
+
+**参考答案：**
+
+使用 fault injection/fake servers 控制 deterministic failure，真实环境验证 provider semantics，process-level test 测 signal，replay test 验证 idempotency，并同时断言 final state、exit code 和 logs。
+
+### Q121.5 — Senior Trade-off / Edge Case
+
+**问题：** 危险 operations CLI 应具备哪些 human-safety UX？
+
+**参考答案：**
+
+提供合理 `--dry-run`、明确 target/environment、destructive confirmation、machine-readable output、非 0 exit codes、stable idempotency keys、完整 audit log，且绝不能默认指向 production。
+
+---
+
+# 16 — CI/CD 与 Release Engineering
+
+## Q122 — GitHub Actions Workflow、Jobs、Runners 与 Dependencies
+
+### Q122.1 — 基础定义
+
+**问题：** 解释 GitHub Actions workflow 的 execution model：events、jobs、steps、runners 和 artifacts。
+
+**参考答案：**
+
+workflow 由 event 触发，包含一个或多个 jobs；每个 job 在 runner 上执行 steps。默认 jobs 可并行，artifact 用于在 job/run 之间保存明确 build outputs。
+
+### Q122.2 — 内部机制
+
+**问题：** job dependencies、matrix、cache、artifact 和 reusable workflow 分别有什么作用？
+
+**参考答案：**
+
+`needs` 定义 job dependency；matrix 展开参数组合；cache 用于加速 dependencies，但不应当成可信 artifact；artifact 是明确输出；reusable workflow 用于复用 pipeline logic。
+
+### Q122.3 — 生产场景
+
+**问题：** workflow 是 green，但部署 artifact 不是 review 的那个 commit。可能发生了什么？
+
+**参考答案：**
+
+可能是 deploy stage 又 rebuild、mutable tag、checkout 错 SHA/ref、artifact name collision、cache 被误用、un-pinned dependency，或 promotion 下载了另一个 run 的 artifact。应 build once，以 immutable digest promotion。
+
+### Q122.4 — 故障排查
+
+**问题：** self-hosted runner 偶尔残留 state 污染后续 builds。怎么调查和缓解？
+
+**参考答案：**
+
+检查 workspace cleanup、Docker/container state、tool cache、credentials、background processes、permissions 和 runner lifecycle。高隔离场景更适合 ephemeral runners，否则必须有 deterministic cleanup 和 health checks。
+
+### Q122.5 — Senior Trade-off / Edge Case
+
+**问题：** production delivery system 中什么时候选 hosted runners，什么时候选 self-hosted runners？
+
+**参考答案：**
+
+hosted runners 维护成本低、ephemeral；self-hosted 可访问 private network、自定义硬件/工具或优化成本，但需要自己承担 patching、isolation、capacity 和 supply-chain security。
+
+---
+
+## Q123 — GitHub Actions Permissions、OIDC、Secrets 与 Deployment Concurrency
+
+### Q123.1 — 基础定义
+
+**问题：** `GITHUB_TOKEN` permissions 和 workflow/repository 权限应该如何设计？
+
+**参考答案：**
+
+默认 least privilege，只给 job 所需权限，最好在 job scope 明确声明。build/read 与 deploy/write 权限分开，不要在 untrusted code path 中提供 broad write token。
+
+### Q123.2 — 内部机制
+
+**问题：** 为什么 OIDC federation 通常比 CI 中长期 cloud access keys 更安全？
+
+**参考答案：**
+
+OIDC 让 runner 用签名 workload identity 换取短期 cloud credentials，不必在 CI 存 static keys，并可按 repo、branch、environment、workflow claims 限制 trust。
+
+### Q123.3 — 生产场景
+
+**问题：** 一个 PR workflow 可以执行不可信代码，同时读取 production secrets。问题是什么？
+
+**参考答案：**
+
+不可信 PR 代码可以直接 exfiltrate secrets 或篡改 deployment 行为。生产 credentials 不应暴露给 arbitrary fork/PR execution，应分离 trusted deployment workflow 和 protected environment。
+
+### Q123.4 — 故障排查
+
+**问题：** 两个 production deployment workflows 并发运行发生 race，如何防止？
+
+**参考答案：**
+
+使用 concurrency groups 或外部 deployment lock，保证同一 target environment 只有一个 mutating deploy；明确 queue/cancel semantics，并让 deployment 本身 idempotent。
+
+### Q123.5 — Senior Trade-off / Edge Case
+
+**问题：** 对 production environments、approvals、secrets 和 third-party actions 应加什么 controls？
+
+**参考答案：**
+
+使用 protected environments、required reviewers、least-privilege OIDC roles、secret scoping/rotation、第三方 action pin SHA、dependency review、audit logs，并分离 build provenance 与 deploy authorization。
+
+---
+
+## Q124 — Jenkins Controller、Agents 与 Pipeline Failure
+
+### Q124.1 — 基础定义
+
+**问题：** 解释 Jenkins controller/agent 架构，以及 Pipeline 的作用。
+
+**参考答案：**
+
+controller 负责调度、保存 job/pipeline metadata 和协调 agents；agents 执行 build/deploy steps；Pipeline-as-code 定义 stages、conditions、parallelism、credentials 和 recovery。
+
+### Q124.2 — 内部机制
+
+**问题：** long-lived Jenkins agents 有哪些 reliability/security risks？
+
+**参考答案：**
+
+长期 agent 会积累 tools、credentials、cache、workspace state、vulnerabilities 和 cross-job contamination；恶意 job 还可能持久化。ephemeral agent 能显著降低这类风险。
+
+### Q124.3 — 生产场景
+
+**问题：** agent 在 deployment 中途挂掉，如何判断是否可以 safe retry？
+
+**参考答案：**
+
+检查哪些 side effects 已完成：deployment logs、cloud state、artifact/version markers、idempotency keys。基于真实状态 resume 或 rollback，不能把“stage failed”理解成“什么都没改”。
+
+### Q124.4 — 故障排查
+
+**问题：** Jenkins queue 越来越长，但部分 agents idle。怎么调查？
+
+**参考答案：**
+
+检查 labels、executors、node online state、resource constraints、throttling/lock plugins、stuck executors，以及 queue job 是否要求 idle agent 不具备的 label。
+
+### Q124.5 — Senior Trade-off / Edge Case
+
+**问题：** 如何逐步现代化脆弱 Jenkins 系统，而不是 big-bang migration？
+
+**参考答案：**
+
+先把 pipeline 变成 versioned/declarative，隔离 credentials，再引入 ephemeral agents 和 immutable artifacts；选代表性 jobs 分批迁移、并行验证，并保留 rollback。
+
+---
+
+## Q125 — Artifact Provenance、Reproducible Build 与 Deployment Race
+
+### Q125.1 — 基础定义
+
+**问题：** 什么叫 build once, promote the same artifact？为什么重要？
+
+**参考答案：**
+
+从明确 source revision 只 build/package 一次，赋予 immutable digest/version，然后把同一 artifact 在环境间 promotion。每环境重新 build 会制造 drift，削弱审计。
+
+### Q125.2 — 内部机制
+
+**问题：** artifact provenance 是什么？什么让 build 更 reproducible？
+
+**参考答案：**
+
+provenance 记录谁/什么 builder、source revision、dependencies、inputs 等；reproducibility 表示相同声明 inputs 可生成等价输出。hermetic/pinned build 更容易达到。
+
+### Q125.3 — 生产场景
+
+**问题：** staging 与 production 都从同一个 Git tag rebuild，但得到不同 binaries。原因可能是什么？
+
+**参考答案：**
+
+mutable dependencies、timestamps、环境-specific build flags、unpinned toolchain、外部 downloads、dirty workspace、不同 base image 都会改变结果。环境差异应由 runtime config，而不是重新编译决定。
+
+### Q125.4 — 故障排查
+
+**问题：** version label 显示 commit A，但 binary 行为像 commit B。如何调查？
+
+**参考答案：**
+
+核对 registry/runtime digest、deployment manifest、build attestation、image layers、binary 内嵌 Git SHA 和 pipeline run ID。不能只相信 human-readable tag。
+
+### Q125.5 — Senior Trade-off / Edge Case
+
+**问题：** artifact promotion 到 production 前应有哪些 supply-chain/release controls？
+
+**参考答案：**
+
+要求 immutable digest、适当的 signing/attestation/provenance、dependency/vulnerability checks、build/deploy authority separation、production approval，以及 post-deploy 对 expected digest 的验证。
+
+---
+
+# 17 — Security / PCI / Software Supply Chain
+
+## Q126 — PCI DSS Scope 与 Cardholder Data Boundary
+
+### Q126.1 — 基础定义
+
+**问题：** 高层来看，哪些因素决定一个系统是否进入 PCI DSS scope？
+
+**参考答案：**
+
+存储、处理或传输 cardholder data 的系统会进入 scope；能够影响 cardholder-data environment 安全的系统也可能进入 scope。最终边界应由组织的 PCI/QSA 流程正式确认。
+
+### Q126.2 — 内部机制
+
+**问题：** PAN、cardholder data、sensitive authentication data 和 payment token 有什么区别？
+
+**参考答案：**
+
+PAN 是 primary account number，是 cardholder data 核心；sensitive authentication data 包括完整 track data、CVV/CVC、PIN 等，处理要求更严格。token 若不能在 tokenization system 外还原/当 PAN 使用，可显著降低暴露。
+
+### Q126.3 — 生产场景
+
+**问题：** 你的应用从不存 PAN，但可以影响处理 PAN 的系统安全。它是否仍可能 in scope？
+
+**参考答案：**
+
+可以。identity、logging、CI/CD、network controls 或可修改 CDE 软件的系统都可能影响 CDE 安全。segmentation 只有真实且经过验证才真正缩小 scope。
+
+### Q126.4 — 故障排查
+
+**问题：** 在 application logs 中发现敏感 payment data，立即优先做什么？
+
+**参考答案：**
+
+先阻止继续泄露，限制相关 logs 访问，保留 evidence，通知 security/incident process，确认数据类型、暴露时间窗和访问范围，并按批准流程处理 rotation、retention/deletion 和合规要求。
+
+### Q126.5 — Senior Trade-off / Edge Case
+
+**问题：** 如何通过 architecture 缩小 PCI scope，同时不牺牲 reliability 与 observability？
+
+**参考答案：**
+
+使用强 segmentation、tokenization、窄权限 identities、带 redaction 的独立 logging pipeline、immutable audit trail 和受控 deployment boundary。可观测性应记录业务 identifier/outcome，而不是复制 payment secrets。
+
+---
+
+## Q127 — Authentication、Authorization、IAM 与 Least Privilege
+
+### Q127.1 — 基础定义
+
+**问题：** authentication 与 authorization 有什么区别？
+
+**参考答案：**
+
+authentication 证明 principal 是谁；authorization 决定这个已认证 principal 可以在什么条件下对哪些资源执行什么动作。
+
+### Q127.2 — 内部机制
+
+**问题：** RBAC、ABAC、service identity 和 least privilege 如何关联？
+
+**参考答案：**
+
+RBAC 按角色授权，ABAC 按属性/tag/context，service identity 用于 workload 身份认证，而 least privilege 要求每个 identity 只拥有完成任务所需最小 action/resource/time 权限。
+
+### Q127.3 — 生产场景
+
+**问题：** 应用 role 因历史 IAM 问题直接用了 `AdministratorAccess`。你会怎么处理？
+
+**参考答案：**
+
+利用 CloudTrail/access logs 找实际所需操作，拆分 deploy/runtime/break-glass roles，增加 conditions/boundaries，并在验证后移除 broad admin。不能用永久 wildcard 来“解决” authorization design。
+
+### Q127.4 — 故障排查
+
+**问题：** 如何调查跨 CI、cloud IAM、Kubernetes 的 privilege escalation path？
+
+**参考答案：**
+
+画出所有 trust edges：谁能改 workflow、assume role、创建 token、修改 cluster RBAC、impersonate service account；检查 trust policies、OIDC claims、CI permissions、K8s bindings 和 audit logs 的 transitive path。
+
+### Q127.5 — Senior Trade-off / Edge Case
+
+**问题：** 事故中如何兼顾 least privilege 与 operational usability？
+
+**参考答案：**
+
+正常身份保持 least privilege；为事故准备 audited、time-bounded break-glass elevation、强认证和事后 review。事故速度来自预先设计 emergency access，不是常驻过度权限。
+
+---
+
+## Q128 — Secrets、KMS、Encryption 与 Rotation
+
+### Q128.1 — 基础定义
+
+**问题：** encryption at rest、encryption in transit 和 secret management 有什么区别？
+
+**参考答案：**
+
+at-rest encryption 保护存储数据，in-transit encryption 保护传输中的数据，secret management 管理 credential/key 从创建、存储、访问、rotation 到 revocation 的整个生命周期。
+
+### Q128.2 — 内部机制
+
+**问题：** 高层解释 KMS-style envelope encryption。
+
+**参考答案：**
+
+先用 data-encryption key 加密 payload，再用 KMS-managed key 加密这个 data key；encrypted data key 可和 ciphertext 一起存储，而真正 unwrap 由 KMS policy/audit 控制。
+
+### Q128.3 — 生产场景
+
+**问题：** 一个 database password 被 commit 到 Git 且已经用于 production。下一步？
+
+**参考答案：**
+
+视为 compromised：立即 revoke/rotate，从 active code 移除，检查 Git history、CI artifacts、logs 和谁可访问，然后按 incident process 评估。仅 rewrite Git history 不能让旧 credential 重新安全。
+
+### Q128.4 — 故障排查
+
+**问题：** 如何给数千 application instances rotate secret 而不 outage？
+
+**参考答案：**
+
+支持 overlap：发布 new version secret，逐步让 clients 使用并验证 adoption，再 revoke old secret。最好支持 dynamic reload 或 dual-validity window，并监控 auth failures。
+
+### Q128.5 — Senior Trade-off / Edge Case
+
+**问题：** workload 什么时候应该用 long-lived secret，什么时候优先 short-lived identity credentials？
+
+**参考答案：**
+
+平台支持时优先 short-lived federated/workload identity credentials。static long-lived secrets 在 rotation、泄露、复制和撤销方面更难管理，应是例外。
+
+---
+
+## Q129 — Network Security、TLS、mTLS 与 Segmentation
+
+### Q129.1 — 基础定义
+
+**问题：** TLS 提供哪些 security properties？它本身不能解决什么？
+
+**参考答案：**
+
+TLS 提供传输 confidentiality、integrity 和基于证书/trust model 的 endpoint authentication。它不会自动授权业务动作、修复 compromised endpoint，也保护不了解密后的数据。
+
+### Q129.2 — 内部机制
+
+**问题：** mTLS 比普通 server-authenticated TLS 多了什么 guarantee？
+
+**参考答案：**
+
+mTLS 让双方都提供证书，因此 server 可获得 cryptographic client/workload identity；但 authorization 仍需要基于这个 identity 的 policy。
+
+### Q129.3 — 生产场景
+
+**问题：** 团队认为 private network 足够安全，因此建议 service-to-service 明文。你怎么评估？
+
+**参考答案：**
+
+private routing 只能减少暴露，无法防 compromised workload、misrouting、insider 或 lateral movement。应基于数据敏感度、threat model、平台成本决定是否需要 service identity/encryption。
+
+### Q129.4 — 故障排查
+
+**问题：** certificate rotation 导致 mTLS outage，怎么诊断？
+
+**参考答案：**
+
+检查 certificate expiry/not-before、trust bundle、issuer/chain、SAN identity、clock skew、old/new CA overlap、proxy config 和 handshake errors。rotation 应提供 trust overlap，不应一次性全球原子替换。
+
+### Q129.5 — Senior Trade-off / Edge Case
+
+**问题：** network segmentation 如何减少 blast radius，同时避免变得不可运维？
+
+**参考答案：**
+
+按 trust/data boundary 和最小 service need 分段，policy as code，尽量 identity/service-oriented，监控 denies，持续 connectivity test，并提供受控 break-glass，而不是永久 broad exception。
+
+---
+
+## Q130 — Software Supply Chain 与 Vulnerability Management
+
+### Q130.1 — 基础定义
+
+**问题：** CI/CD pipeline 的主要 software supply-chain risks 有哪些？
+
+**参考答案：**
+
+风险包括 source account compromise、恶意 dependencies、poisoned runners、mutable artifacts/tags、stolen signing/deploy credentials、dependency confusion、vulnerable build tools 和 tampered registries。
+
+### Q130.2 — 内部机制
+
+**问题：** 按 version pin dependency 与按 immutable digest/commit pin 有什么区别？
+
+**参考答案：**
+
+semantic version/tag 有时可被重新发布或解析到不同内容，而 digest/commit 指向精确 immutable content。pinning 提高 reproducibility，但还要有正常 update process，避免永远不升级。
+
+### Q130.3 — 生产场景
+
+**问题：** 数百 services 使用的 base image 出现 critical vulnerability，怎么响应？
+
+**参考答案：**
+
+先评估 exploitability/exposure，用 digest/SBOM 找受影响 running artifacts，优先 internet-facing/高权限 services，从 patched base 重建、canary、rollout，并验证旧 vulnerable instances 已清除。
+
+### Q130.4 — 故障排查
+
+**问题：** 如何判断 vulnerability 需要 emergency patch 还是 normal remediation？
+
+**参考答案：**
+
+结合 severity、reachable code、internet exposure、privilege、available exploit、compensating controls、asset criticality 和 patch risk，不能只看 CVSS。
+
+### Q130.5 — Senior Trade-off / Edge Case
+
+**问题：** 哪些 controls 可以降低恶意/被攻陷 dependency 进入 production 的风险？
+
+**参考答案：**
+
+source repo protection、review、least-privilege CI、pinned/verified dependencies、trusted registry、SBOM/provenance、适当 signing/attestation、dependency scanning、ephemeral isolated builders 和受控 promotion。
+
+---
+
+## Q131 — Audit Logs、PII、Patching 与 Security Evidence
+
+### Q131.1 — 基础定义
+
+**问题：** audit log 与普通 application debug log 有什么区别？
+
+**参考答案：**
+
+audit log 记录 security/business-relevant action，包括 actor、action、target、result 和可信时间/context，并应防未经授权修改；debug log 主要服务 troubleshooting。
+
+### Q131.2 — 内部机制
+
+**问题：** PII 和敏感字段在 observability data 中应如何处理？
+
+**参考答案：**
+
+只采集必要最小数据，分类字段，在 source 端 redact/tokenize，限制访问，加密传输/存储，设置合理 retention，并尽量让 secrets/PAN 从一开始就不进入 logs。
+
+### Q131.3 — 生产场景
+
+**问题：** production privileged change 没有可靠 audit trail，为什么既是 compliance problem，也是 operational problem？
+
+**参考答案：**
+
+没有可信 actor/timeline，就无法判断 blast radius、重建 root cause、验证 rollback，也无法区分 human error 与 compromise，因此 incident response 和 accountability 都受损。
+
+### Q131.4 — 故障排查
+
+**问题：** 如何低风险 patch security-sensitive production fleet？
+
+**参考答案：**
+
+盘点受影响版本，先 representative env/canary，保留安全 rollback，监控 SLO/security signals，自动分批 rollout，并按 exposure 优先级处理。emergency patch 仍需要 artifact integrity 和 change tracking。
+
+### Q131.5 — Senior Trade-off / Edge Case
+
+**问题：** security incident 中 evidence preservation 与普通 SRE recovery 目标什么时候会冲突？
+
+**参考答案：**
+
+快速 restart/rebuild 可能破坏 volatile evidence。应与 security/forensics 协调先抓必要 snapshots/logs 或隔离 compromised systems，再使用 known-good artifacts/credentials 恢复。
+
+---
+
+# 18 — Document Database / NoSQL
+
+## Q132 — Document Database Data Modelling、Index 与 Query
+
+### Q132.1 — 基础定义
+
+**问题：** document-oriented data modelling 与 normalized relational modelling 有什么区别？
+
+**参考答案：**
+
+document DB 通常围绕 aggregate-shaped record 存储，并倾向 denormalization，把经常一起读取的数据放在一起；relational model 更强调 normalized tables、joins 和跨行 constraints。
+
+### Q132.2 — 内部机制
+
+**问题：** 什么时候应该 embed related data，什么时候单独 reference？
+
+**参考答案：**
+
+相同 lifecycle、size 有界、经常一起读时适合 embed；many-to-many、独立更新、无界增长或广泛共享时更适合 reference。
+
+### Q132.3 — 生产场景
+
+**问题：** collection 增长后 document DB query 越来越慢。检查什么？
+
+**参考答案：**
+
+检查 filter/sort/query shape、execution plan、index coverage/order、selectivity、document size、working set/cache、partition/shard targeting，以及是否扫描大量 documents。
+
+### Q132.4 — 故障排查
+
+**问题：** 为什么 index 可以让某个 query 更快，却让整体 workload 变差？
+
+**参考答案：**
+
+index 消耗 storage/memory，并让每次 insert/update/delete 产生 write amplification。太多或低 selectivity indexes 会伤 write throughput 和 cache efficiency。
+
+### Q132.5 — Senior Trade-off / Edge Case
+
+**问题：** 新服务什么时候选择 document database，而不是 PostgreSQL？
+
+**参考答案：**
+
+基于 access patterns、aggregate flexibility、schema evolution、partition/scaling、consistency/transaction needs、operational maturity 和团队经验选择，而不是因为 JSON 看起来方便。
+
+---
+
+## Q133 — Document DB Replication、Consistency 与 Failover
+
+### Q133.1 — 基础定义
+
+**问题：** replica set 或 replicated document DB cluster 主要想提供什么能力？
+
+**参考答案：**
+
+replication 通过多份数据提供 redundancy、部分 read scaling 和 failover。常见模式是 leader/primary 协调 writes，followers 按顺序复制 operation/log。
+
+### Q133.2 — 内部机制
+
+**问题：** primary/leader reads/writes、replicas、replication lag 和 consistency 怎么互相影响？
+
+**参考答案：**
+
+更强 write acknowledgement 等待更多 durable/replicated confirmation，latency 更高；从 replica 读可减轻 primary load，但 lag 时可能 stale。具体语义因数据库实现不同。
+
+### Q133.3 — 生产场景
+
+**问题：** failover 后 client 暂时看到 stale data 或 write errors，为什么？
+
+**参考答案：**
+
+leader election 需要时间，in-flight writes 可能处于 unknown outcome，client topology cache 可能过时，replica read 仍有 lag，弱 durability write 甚至可能在某些 failover 中丢失。
+
+### Q133.4 — 故障排查
+
+**问题：** replication lag 持续增长怎么调查？
+
+**参考答案：**
+
+看 network latency、replica CPU/disk I/O、replication/oplog queue、long-running ops、write burst、checkpoint/compaction pressure，并判断是单 replica 还是全体 lag。
+
+### Q133.5 — Senior Trade-off / Edge Case
+
+**问题：** payment-adjacent critical state 与 non-critical metadata 应如何选择 read/write consistency？
+
+**参考答案：**
+
+correctness-critical state 应优先 durable acknowledged write 和足够强 read，即使牺牲 latency；cache-like metadata 可接受 bounded staleness。选择必须由 business invariant 决定。
+
+---
+
+## Q134 — Document DB Sharding、Hot Partition、Schema Evolution 与 Backup
+
+### Q134.1 — 基础定义
+
+**问题：** 为什么 document DB 要 sharding？什么是好 shard/partition key？
+
+**参考答案：**
+
+sharding 用来把 data/load 分散到多个 nodes。好的 key 应有足够 cardinality、均匀分布 reads/writes、支持常见 query routing，并避免 monotonically 把新流量集中到单 shard。
+
+### Q134.2 — 内部机制
+
+**问题：** 什么是 hot partition？错误 shard key 如何制造它？
+
+**参考答案：**
+
+hot partition 是某个 partition 承担不成比例的 traffic/data，导致 cluster average 看起来正常但单 shard 饱和。单大 tenant 或 sequential timestamp 都可能造成热点。
+
+### Q134.3 — 生产场景
+
+**问题：** traffic 增长后只有一个 shard saturation，其他都 idle。怎么诊断？
+
+**参考答案：**
+
+按 shard key/tenant/range 拆 traffic，检查 router targeting、shard CPU/disk/queue、document size 和 write patterns，再看 key distribution。增加 idle shards 并不能解决 concentrated key。
+
+### Q134.4 — 故障排查
+
+**问题：** old/new application versions 同时运行时，document schema 如何演进？
+
+**参考答案：**
+
+使用 tolerant readers、additive fields、合理 defaults，必要时 version marker，并分阶段 backfill。new writers 不应立即写 old readers 无法理解的数据，除非 rollout 顺序严格保证。
+
+### Q134.5 — Senior Trade-off / Edge Case
+
+**问题：** 怎样测试才能真正信任 document DB backup/restore？
+
+**参考答案：**
+
+必须测试 point-in-time correctness、encryption key availability、restore time、indexes、sharded topology metadata、application compatibility、RPO/RTO，以及真正 end-to-end recovery，不是只确认 backup 文件存在。
+
+---
+
+# 19 — Architecture / Technical Leadership
+
+## Q135 — End-to-End System Architecture Reasoning
+
+### Q135.1 — 基础定义
+
+**问题：** review production architecture 时，除了 components 能连通，还应该看哪些维度？
+
+**参考答案：**
+
+应看 user journeys、SLO、failure domains、data correctness、capacity、dependencies、security boundaries、observability、deployment/recovery、operability、cost 和 ownership。只有 connectivity 的图不算完整 architecture review。
+
+### Q135.2 — 内部机制
+
+**问题：** 如何发现 distributed cloud system 中隐藏的 single points of failure？
+
+**参考答案：**
+
+沿 critical user path 逐个问 node/AZ/region/credential/queue/DNS/DB/control-plane/third party 变慢或不可用会怎样，而不只测试完全 down。shared state/control dependencies 常是隐藏 SPOF。
+
+### Q135.3 — 生产场景
+
+**问题：** compute layer 很 HA，但依赖单 region DB 和一个 external API。你会怎么挑战这个设计？
+
+**参考答案：**
+
+compute redundancy 无法把 end-to-end availability 提高到 mandatory single dependency 之上。量化 dependency SLO/failure modes，再考虑 failover、cache/degradation、async decoupling，或诚实调整 service SLO。
+
+### Q135.4 — 故障排查
+
+**问题：** 上线前如何验证 architecture 的 failure assumptions？
+
+**参考答案：**
+
+用 load test、dependency failure injection、AZ/node loss game、backup restore、credential/cert rotation、rollback test 和 synthetic journey 去验证，而不是靠 diagram 假设。
+
+### Q135.5 — Senior Trade-off / Edge Case
+
+**问题：** 如何平衡 availability、consistency、latency、security、cost 和 operational complexity？
+
+**参考答案：**
+
+先从 business/user invariants 和 SLO 出发，选择满足目标的最简单设计。每增加 replica/quorum/cache/region/encryption layer 都会带来新成本和 failure modes，复杂度必须买到可测量风险下降。
+
+---
+
+## Q136 — ADR、Architecture Trade-off、Cost 与 Business Impact
+
+### Q136.1 — 基础定义
+
+**问题：** 一个好的 Architecture Decision Record 应包含什么？
+
+**参考答案：**
+
+好的 ADR 应记录 context、decision、alternatives、关键 constraints、trade-offs、consequences、owner/date，以及什么 evidence 会触发重新评估。它保存 reasoning，而不是复制巨型 design doc。
+
+### Q136.2 — 内部机制
+
+**问题：** decision reversibility 应如何影响架构决策过程？
+
+**参考答案：**
+
+可逆 decision 可以更快实验并依靠 guardrails；难逆 decision，如 data model、public API、regional topology，需要更多 evidence、migration plan 和 stakeholder review。
+
+### Q136.3 — 生产场景
+
+**问题：** 两个设计都满足 SLO，其中一个贵一倍但更容易运维。怎么比较？
+
+**参考答案：**
+
+比较 total cost of ownership：cloud spend、engineer/on-call time、incident probability/impact、delivery speed、vendor risk 和 future change cost。最便宜 infra bill 不一定是最低总成本。
+
+### Q136.4 — 故障排查
+
+**问题：** 如何向非技术 stakeholders 解释 reliability investment？
+
+**参考答案：**
+
+把技术风险转成 customer impact、revenue/contract risk、error-budget burn、recovery time、engineer interruption 和 probability-weighted loss，并说明投资能买到什么 outcome、如何衡量。
+
+### Q136.5 — Senior Trade-off / Edge Case
+
+**问题：** 什么时候 Senior SRE 应接受技术上不那么优雅的设计？
+
+**参考答案：**
+
+当它更符合 business timing、team capability、migration risk、cost 或 reversibility，同时仍满足安全/SLO 底线时，应接受。工程质量不是最大化抽象或新技术。
+
+---
+
+## Q137 — Mentoring、Code Review、Influence 与 Technical Leadership
+
+### Q137.1 — 基础定义
+
+**问题：** Senior SRE 做 code/infra review 的目标，除了找错误还有什么？
+
+**参考答案：**
+
+除了保护 correctness、reliability、security、maintainability，还应传递 context 和 reasoning，让团队下一次 change 自己做得更好，而不是只 block 当前 patch。
+
+### Q137.2 — 内部机制
+
+**问题：** 一个 engineer 反复做高风险 production changes，你如何 mentor？
+
+**参考答案：**
+
+用具体 incident/change 做 evidence，先理解为什么产生风险，再教 precondition、blast radius、recovery thinking，pair 做一次更安全 change，并建立 guardrails/checklist。只有持续 unsafe behaviour 才升级。
+
+### Q137.3 — 生产场景
+
+**问题：** 你非常不同意 Tech Lead 的 architecture，但项目归他负责。怎么办？
+
+**参考答案：**
+
+先确认共同目标/constraints，把 disagreement 和 evidence 写清楚，提出 experiment/failure analysis，并邀请相关 reviewers。一旦责任人基于充分信息做出决定，应支持执行，除非触及严重 safety/security boundary。
+
+### Q137.4 — 故障排查
+
+**问题：** 如何提高 engineering standards，又不把自己变成 bottleneck/gatekeeper？
+
+**参考答案：**
+
+把可重复 policy 自动化，提供 paved-road modules/templates 和例子，通过 coaching 提高团队；只有真正高风险 decision 才保留人工 gate，不应让每个 change 都依赖自己。
+
+### Q137.5 — Senior Trade-off / Edge Case
+
+**问题：** 面试另一个 Senior SRE 时你会重点看什么？
+
+**参考答案：**
+
+看 structured troubleshooting、对自称熟悉技术的深度、production judgement、uncertainty 下表达、coding/automation、reliability/security trade-offs、学习能力和团队 influence，而不是 trivia 数量。
+
+---
+
+# 20 — API Semantics / GraphQL / Disaster Recovery
+
+## Q138 — HTTP API Semantics：Caching、Pagination、Rate Limit、Idempotency
+
+### Q138.1 — 基础定义
+
+**问题：** 可靠 API operation 中，哪些 HTTP method/status semantics 最重要？
+
+**参考答案：**
+
+需要理解 safe/idempotent methods、2xx/4xx/5xx、redirect、409/412 conflict、429 rate limit 和 202 async workflow。status code 应保留 operational meaning，不能所有失败都变成 500。
+
+### Q138.2 — 内部机制
+
+**问题：** cache headers、ETag、conditional request 和 pagination 如何影响 correctness 与 operability？
+
+**参考答案：**
+
+Cache-Control 管 freshness/revalidation；ETag 支持 conditional GET/update 和 optimistic concurrency；cursor pagination 提供较稳定 continuation model。这些都会直接影响 load 和 correctness。
+
+### Q138.3 — 生产场景
+
+**问题：** offset pagination 在数据持续变化时出现 duplicate/missing records，为什么？
+
+**参考答案：**
+
+offset 代表动态 ordered result 中的位置，前面 insert/delete 后后续 offset 会位移，导致 skip/duplicate。基于 immutable ordering key 的 cursor/keyset pagination 通常更安全。
+
+### Q138.4 — 故障排查
+
+**问题：** 如何设计 rate limiting 与 client behaviour，避免 overload 演化成 retry storm？
+
+**参考答案：**
+
+server 侧用 token bucket/leaky bucket，429 返回 `Retry-After` 等 guidance；client 使用 bounded backoff+jitter，并区分 per-user/per-tenant/global limits，保护真正 downstream capacity。
+
+### Q138.5 — Senior Trade-off / Edge Case
+
+**问题：** create/update API 如何做到对 retry 和 concurrent clients 安全？
+
+**参考答案：**
+
+create 用 idempotency key，update 用 ETag/version/If-Match 或 DB CAS，配合 atomic uniqueness constraint 和明确 conflict response，让 retry 收敛到同一 business outcome。
+
+---
+
+## Q139 — GraphQL Resolver、N+1、Complexity 与 Security
+
+### Q139.1 — 基础定义
+
+**问题：** GraphQL execution 在运维上与固定 REST endpoint 有什么不同？
+
+**参考答案：**
+
+client 可选择 query shape，因此每个 request 的 server cost 变化很大，resolver 动态组合。一个 endpoint 实际代表许多 logical operations，所以 query complexity、authorization、caching 和 per-field latency 都很重要。
+
+### Q139.2 — 内部机制
+
+**问题：** 什么是 N+1 problem？batching/DataLoader-style pattern 如何解决？
+
+**参考答案：**
+
+parent resolver 可能对每个 item 再发一次 child query，形成 N+1 calls；batching 把多个 keys 合并成少量 backend requests，per-request cache 避免重复 fetch。
+
+### Q139.3 — 生产场景
+
+**问题：** 单个 GraphQL query 导致数千 DB calls 和高 CPU，incident 中怎么先止血？
+
+**参考答案：**
+
+先限制 depth/complexity、rate limit、timeout，必要时临时 disable/cap pathological field，保护 DB pool，并看 slow resolver traces；稳定后再修 batching/index/query planning。
+
+### Q139.4 — 故障排查
+
+**问题：** 如何让 GraphQL 足够 observable，同时避免把 raw query text 作为高 cardinality metric label？
+
+**参考答案：**
+
+记录 operation name/hash、bounded complexity buckets、resolver latency/error、backend call count 和 sampled traces。完整 query text 只在受控 logs/traces 中按需保存，不做 metric label。
+
+### Q139.5 — Senior Trade-off / Edge Case
+
+**问题：** public GraphQL endpoint 应加哪些 security/reliability controls？
+
+**参考答案：**
+
+加入 depth/complexity/result-size limits、resolver/domain auth、rate limit、persisted queries（适用时）、introspection policy、input validation、timeouts、batching 和 query-cost observability。
+
+---
+
+## Q140 — Disaster Recovery：Backup、Restore、RTO、RPO 与 Failover Drill
+
+### Q140.1 — 基础定义
+
+**问题：** RTO 和 RPO 是什么？区别在哪里？
+
+**参考答案：**
+
+RTO 是 disaster 后恢复到可接受 service 的目标时间；RPO 是最多允许丢失多少时间/transactions 的数据。两者决定 replication、backup frequency、architecture 和 staffing。
+
+### Q140.2 — 内部机制
+
+**问题：** 为什么“有 backup”不等于“有 disaster recovery capability”？
+
+**参考答案：**
+
+DR 还必须恢复 data、infrastructure、identity、secrets/keys、dependencies、DNS/traffic 和 application correctness，并在 RTO/RPO 内完成。未演练 backup 只能说明某处可能有数据。
+
+### Q140.3 — 生产场景
+
+**问题：** database backup 还在，但 encryption key 和 IAM config 都丢了，意味着什么？
+
+**参考答案：**
+
+backup 可能实际上不可用。KMS keys、credentials、IaC、certificates 和 account access 都是 recovery dependencies，必须有独立可恢复方案。
+
+### Q140.4 — 故障排查
+
+**问题：** 如何做 realistic DR exercise，同时避免给 production 带来不可接受风险？
+
+**参考答案：**
+
+定义 scenario/success criteria，在独立 environment/account/region restore，验证 data 和 synthetic user journey，测量 elapsed time/data loss，演练 traffic decision，并记录 gaps，避免修改当前 production state。
+
+### Q140.5 — Senior Trade-off / Edge Case
+
+**问题：** 如何选择 active-active、warm standby、pilot light、backup/restore 或更简单 single-region recovery？
+
+**参考答案：**
+
+选择能满足业务 RTO/RPO 的最低复杂度模式。active-active 可减少部分恢复时间，但 consistency 和运维复杂度极高；backup/restore 成本低但恢复慢。目标必须足以证明额外架构复杂度合理。
 
 ---
 

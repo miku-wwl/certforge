@@ -2,7 +2,7 @@
 
 CertForge 是一个运行在 localhost 的本地 SRE 学习系统，使用 Spring Boot、Thymeleaf 和 H2 file database 构建，不需要单独启动 Node.js 前端。
 
-当前题库是 Pushpay Senior SRE 基础知识 Study Edition：112 个主题，每个主题 5 道简答题，共 560 道题。源文件是 `src/main/resources/question-bank/SRE_foundations_112x5.md`，启动时由 Markdown parser 读取；根目录的 `04_ZH_QA_study_edition_112x5_560.md` 是同一份中文源材料的工作副本。
+当前题库是 Pushpay Senior SRE 基础知识 Study Edition：140 个主题，每个主题 5 道简答题，共 700 道题。源文件是 `src/main/resources/question-bank/SRE_foundations_140x5.md`，启动时由 Markdown parser 读取；根目录的 `04_ZH_QA_study_edition_140x5_700.md` 是同一份中文源材料的工作副本。
 
 ## 功能
 
@@ -35,7 +35,7 @@ src/main/java/com/certforge
 ├── repository   JPA repositories
 └── service      题库、选题、判分、进度和数据导出服务
 src/main/resources
-├── question-bank/SRE_foundations_112x5.md
+├── question-bank/SRE_foundations_140x5.md
 ├── messages_zh.properties / messages_en.properties
 ├── static/css/app.css
 ├── static/js/app.js

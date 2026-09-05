@@ -47,7 +47,7 @@ class CertForgeIntegrationTest {
         String dashboard = mockMvc.perform(get("/")).andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         assertTrue(dashboard.contains("SRE-FOUNDATIONS"));
-        assertTrue(dashboard.contains("560"));
+        assertTrue(dashboard.contains("700"));
         assertFalse(dashboard.contains("/exam"));
 
         String study = mockMvc.perform(get("/study")).andExpect(status().isOk())
@@ -144,7 +144,7 @@ class CertForgeIntegrationTest {
     }
 
     @Test
-    void loadsAllFiveHundredSixtySreReferenceAnswers() {
-        assertEquals(560, explanationService.count());
+    void loadsAllSevenHundredSreReferenceAnswers() {
+        assertEquals(700, explanationService.count());
     }
 }

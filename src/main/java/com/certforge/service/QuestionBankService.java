@@ -37,7 +37,7 @@ public class QuestionBankService {
     public QuestionBankService(ResourceLoader resourceLoader,
                                MarkdownQuestionBankParser parser,
                                com.certforge.i18n.LanguageContext languageContext,
-                               @Value("${certforge.question-bank:classpath:/question-bank/SRE_foundations_112x5.md}") String sourceLocation) {
+                               @Value("${certforge.question-bank:classpath:/question-bank/SRE_foundations_140x5.md}") String sourceLocation) {
         this.languageContext = languageContext;
         Resource resource = resourceLoader.getResource(sourceLocation);
         if (!resource.exists()) {
@@ -61,7 +61,7 @@ public class QuestionBankService {
                 sreBank ? "sre-foundations" : "aws-aip-c01",
                 sreBank ? "Pushpay Senior SRE 基础知识" : "AWS Certified Generative AI Developer - Professional",
                 sreBank ? "SRE-FOUNDATIONS" : "AIP-C01",
-                sreBank ? "112 topics × 5 Q&A" : "source",
+                sreBank ? (questions.stream().map(Question::topic).distinct().count() + " topics × 5 Q&A") : "source",
                 sourceLocation,
                 questions.size());
 

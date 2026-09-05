@@ -16,7 +16,7 @@
     <section class="course-banner">
         <div class="course-icon">SRE<br><small>OPS</small></div>
         <div><p class="eyebrow light" th:text="#{dashboard.activeBank}">ACTIVE QUESTION BANK</p><h2 th:text="${metadata.title}">Pushpay Senior SRE 基础知识</h2>
-            <p><span class="pill dark" th:text="${metadata.code}">SRE-FOUNDATIONS</span> <span class="banner-meta" th:text="${metadata.questionCount + ' ' + #messages.msg('dashboard.questionCount')}">560 道题 · SRE Markdown source</span></p></div>
+            <p><span class="pill dark" th:text="${metadata.code}">SRE-FOUNDATIONS</span> <span class="banner-meta" th:text="${metadata.questionCount + ' ' + #messages.msg('dashboard.questionCount')}">700 道题 · SRE Markdown source</span></p></div>
     </section>
     <section class="stats-grid" th:attr="aria-label=#{dashboard.stats}">
         <div class="stat-card"><span class="stat-label" th:text="#{dashboard.total}">题库总数</span><strong th:text="${progress.total}">127</strong><span class="stat-icon blue">#</span></div>
@@ -67,7 +67,7 @@
         </div>
         <div class="form-error" th:if="${importError}" role="alert" th:text="${importError}"></div>
     </section>
-    <p class="footer-note"><span th:text="#{dashboard.source}">题库解析自 Markdown：</span><code th:text="${metadata.sourceFile}">classpath:/question-bank/SRE_foundations_112x5.md</code></p>
+    <p class="footer-note"><span th:text="#{dashboard.source}">题库解析自 Markdown：</span><code th:text="${metadata.sourceFile}">classpath:/question-bank/SRE_foundations_140x5.md</code></p>
 </main></div>
 <script th:src="@{/js/app.js}"></script>
 </body></html>
