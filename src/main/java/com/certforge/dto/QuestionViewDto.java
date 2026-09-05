@@ -9,16 +9,24 @@ public class QuestionViewDto {
     private final String questionText;
     private final List<OptionViewDto> options;
     private final boolean multipleChoice;
+    private final boolean shortAnswer;
     private final boolean starred;
 
     public QuestionViewDto(String id, int questionNumber, String topic, String questionText,
                             List<OptionViewDto> options, boolean multipleChoice, boolean starred) {
+        this(id, questionNumber, topic, questionText, options, multipleChoice, false, starred);
+    }
+
+    public QuestionViewDto(String id, int questionNumber, String topic, String questionText,
+                            List<OptionViewDto> options, boolean multipleChoice, boolean shortAnswer,
+                            boolean starred) {
         this.id = id;
         this.questionNumber = questionNumber;
         this.topic = topic;
         this.questionText = questionText;
         this.options = List.copyOf(options);
         this.multipleChoice = multipleChoice;
+        this.shortAnswer = shortAnswer;
         this.starred = starred;
     }
 
@@ -28,5 +36,6 @@ public class QuestionViewDto {
     public String getQuestionText() { return questionText; }
     public List<OptionViewDto> getOptions() { return options; }
     public boolean isMultipleChoice() { return multipleChoice; }
+    public boolean isShortAnswer() { return shortAnswer; }
     public boolean isStarred() { return starred; }
 }

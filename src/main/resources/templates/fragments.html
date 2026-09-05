@@ -18,7 +18,6 @@
         <a th:href="@{/}" th:classappend="${active == 'dashboard'} ? 'active'"><span>⌂</span><span th:text="#{nav.dashboard}">总览</span></a>
         <a th:href="@{/study}" th:classappend="${active == 'study'} ? 'active'"><span>📖</span><span th:text="#{nav.study}">背题模式</span></a>
         <a th:href="@{/review}" th:classappend="${active == 'review'} ? 'active'"><span>✓</span><span th:text="#{nav.review}">即时答题</span></a>
-        <a th:href="@{/exam}" th:classappend="${active == 'exam'} ? 'active'"><span>⏱</span><span th:text="#{nav.exam}">模拟考试</span></a>
         <a th:href="@{/wrong}" th:classappend="${active == 'wrong'} ? 'active'"><span>✕</span><span th:text="#{nav.wrong}">错题复习</span></a>
         <a th:href="@{/starred}" th:classappend="${active == 'starred'} ? 'active'"><span>★</span><span th:text="#{nav.starred}">我的星标</span></a>
     </nav>

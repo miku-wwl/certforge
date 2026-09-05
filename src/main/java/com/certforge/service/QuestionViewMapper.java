@@ -78,7 +78,7 @@ public class QuestionViewMapper {
                 .map(option -> option(option, selected, revealAnswers ? question.correctAnswers() : Set.of()))
                 .toList();
         return new QuestionViewDto(question.id(), question.questionNumber(), question.localizedTopic(language), question.text(language),
-                options, question.multipleChoice(), starred);
+                options, question.multipleChoice(), question.shortAnswer(), starred);
     }
 
     public List<CommunityVoteDto> votes(List<CommunityVote> source) {

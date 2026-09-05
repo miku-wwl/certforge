@@ -97,6 +97,13 @@ public class ReviewController {
         Question question = questionBankService.require(state.practiceSession().currentQuestionId());
         String questionId = question.id();
         if (!state.checkedResults().containsKey(questionId)) {
+            if (question.shortAnswer()) {
+                // Reveal the reference answer without fabricating a binary grade
+                // or polluting mastery statistics for a self-check question.
+                state.practiceSession().answer(questionId, Set.of());
+                state.checkedResults().put(questionId, true);
+                return "redirect:/review";
+            }
             Set<String> selected = practiceService.normalize(answers == null ? List.of() : List.of(answers));
             state.practiceSession().answer(questionId, selected);
             boolean correct = practiceService.grade(question, selected);
@@ -167,7 +174,9 @@ public class ReviewController {
         for (int index = 0; index < state.practiceSession().size(); index++) {
             Question question = questionBankService.require(state.practiceSession().questionIds().get(index));
             QuestionProgressEntity saved = progress.get(question.id());
-            String stateName = state.checkedResults().containsKey(question.id())
+            String stateName = question.shortAnswer()
+                    ? (state.checkedResults().containsKey(question.id()) ? "answered" : "unanswered")
+                    : state.checkedResults().containsKey(question.id())
                     ? (state.checkedResults().get(question.id()) ? "correct" : "incorrect")
                     : saved != null && saved.isHasAnswered()
                     ? (saved.isLastCorrect() ? "correct" : "incorrect") : "unanswered";

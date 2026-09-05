@@ -6,6 +6,7 @@ import com.certforge.parser.QuestionBankParseResult;
 import org.junit.jupiter.api.Test;
 
 import java.io.InputStreamReader;
+import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Set;
 
@@ -59,5 +60,32 @@ class MarkdownQuestionBankParserTest {
         assertTrue(question.chineseOptions().get(1).mostVoted());
         assertEquals(Set.of("B"), question.correctAnswers());
         assertEquals(75, question.communityVotes().get(0).percentage());
+    }
+
+    @Test
+    void parsesSreShortAnswerBlocksAndKeepsReferenceAnswer() throws Exception {
+        String source = """
+                # 01 — Git 内部原理
+                ## Q1 — .git 目录
+                ### Q1.1 — 基础定义
+                **问题：** `.git` 目录保存什么？
+                **参考答案：**
+                保存仓库元数据和对象。
+                ---
+                ### Q1.2 — 内部机制
+                **问题：** 什么是 object database？
+                **参考答案：**
+                Git 使用内容寻址对象库。
+                """;
+
+        QuestionBankParseResult result = new MarkdownQuestionBankParser().parse(new StringReader(source));
+        assertEquals(2, result.detectedQuestionCount());
+        assertEquals(2, result.questions().size());
+        assertTrue(result.questions().stream().allMatch(Question::shortAnswer));
+        assertEquals("保存仓库元数据和对象。", result.questions().get(0).answerText());
+        assertTrue(result.questions().get(0).questionText().contains("基础定义"));
+        assertTrue(result.questions().get(0).options().isEmpty());
+        assertEquals(2, result.shortAnswerCount());
+        assertEquals(0, result.singleChoiceCount());
     }
 }

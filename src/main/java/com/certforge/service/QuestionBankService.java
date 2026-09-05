@@ -37,7 +37,7 @@ public class QuestionBankService {
     public QuestionBankService(ResourceLoader resourceLoader,
                                MarkdownQuestionBankParser parser,
                                com.certforge.i18n.LanguageContext languageContext,
-                               @Value("${certforge.question-bank:classpath:/question-bank/AWS_AIP-C01.md}") String sourceLocation) {
+                               @Value("${certforge.question-bank:classpath:/question-bank/SRE_foundations_112x5.md}") String sourceLocation) {
         this.languageContext = languageContext;
         Resource resource = resourceLoader.getResource(sourceLocation);
         if (!resource.exists()) {
@@ -56,17 +56,19 @@ public class QuestionBankService {
             throw new IllegalStateException("Question bank contains no valid questions: " + sourceLocation);
         }
 
+        boolean sreBank = questions.stream().allMatch(Question::shortAnswer);
         this.metadata = new QuestionBankMetadata(
-                "aws-aip-c01",
-                "AWS Certified Generative AI Developer - Professional",
-                "AIP-C01",
-                "source",
+                sreBank ? "sre-foundations" : "aws-aip-c01",
+                sreBank ? "Pushpay Senior SRE 基础知识" : "AWS Certified Generative AI Developer - Professional",
+                sreBank ? "SRE-FOUNDATIONS" : "AIP-C01",
+                sreBank ? "112 topics × 5 Q&A" : "source",
                 sourceLocation,
                 questions.size());
 
         log.info("Question bank loaded");
-        log.info("Parsed: {}, Failed: {}, Single choice: {}, Multiple choice: {}",
-                questions.size(), parseResult.failures().size(), parseResult.singleChoiceCount(), parseResult.multipleChoiceCount());
+        log.info("Parsed: {}, Failed: {}, Short answer: {}, Single choice: {}, Multiple choice: {}",
+                questions.size(), parseResult.failures().size(), parseResult.shortAnswerCount(),
+                parseResult.singleChoiceCount(), parseResult.multipleChoiceCount());
         for (ParseFailure failure : parseResult.failures()) {
             log.warn("Question {} was not parsed: {} | source fragment: {}",
                     failure.questionNumber(), failure.reason(), failure.sourceFragment());

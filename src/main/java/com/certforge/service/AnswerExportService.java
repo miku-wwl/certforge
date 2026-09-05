@@ -113,6 +113,7 @@ public class AnswerExportService {
     }
 
     private static String questionType(Question question, boolean english) {
+        if (question.shortAnswer()) return english ? "Short answer" : "简答题";
         if (english) return question.multipleChoice() ? "Multiple choice" : "Single choice";
         return question.multipleChoice() ? "多选题" : "单选题";
     }

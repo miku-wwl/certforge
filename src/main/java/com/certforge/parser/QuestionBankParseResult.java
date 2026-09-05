@@ -15,10 +15,14 @@ public record QuestionBankParseResult(
     }
 
     public long singleChoiceCount() {
-        return questions.stream().filter(question -> !question.multipleChoice()).count();
+        return questions.stream().filter(question -> !question.multipleChoice() && !question.shortAnswer()).count();
     }
 
     public long multipleChoiceCount() {
         return questions.stream().filter(Question::multipleChoice).count();
+    }
+
+    public long shortAnswerCount() {
+        return questions.stream().filter(Question::shortAnswer).count();
     }
 }

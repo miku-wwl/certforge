@@ -29,6 +29,9 @@ public class PracticeService {
     }
 
     public boolean grade(Question question, Collection<String> selectedAnswers) {
+        if (question.shortAnswer()) {
+            return false;
+        }
         return normalize(selectedAnswers).equals(new TreeSet<>(question.correctAnswers()));
     }
 
@@ -77,10 +80,13 @@ public class PracticeService {
                 && !criteria.topic().equals(question.localizedTopic(com.certforge.i18n.Language.ZH))) {
             return false;
         }
-        if (criteria.type() == SelectionType.SINGLE && question.multipleChoice()) {
+        if (criteria.type() == SelectionType.SINGLE && (question.multipleChoice() || question.shortAnswer())) {
             return false;
         }
         if (criteria.type() == SelectionType.MULTIPLE && !question.multipleChoice()) {
+            return false;
+        }
+        if (criteria.type() == SelectionType.SHORT_ANSWER && !question.shortAnswer()) {
             return false;
         }
         if (criteria.starredOnly() && (progress == null || !progress.isStarred())) {
@@ -128,7 +134,7 @@ public class PracticeService {
         return numbers;
     }
 
-    public enum SelectionType { ALL, SINGLE, MULTIPLE }
+    public enum SelectionType { ALL, SINGLE, MULTIPLE, SHORT_ANSWER }
 
     public record SelectionCriteria(Set<Integer> questionNumbers, String search, String topic, SelectionType type,
                                     boolean starredOnly, boolean wrongOnly, boolean unansweredOnly,

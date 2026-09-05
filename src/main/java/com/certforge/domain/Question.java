@@ -15,13 +15,23 @@ public record Question(
         List<CommunityVote> communityVotes,
         String chineseQuestionText,
         List<QuestionOption> chineseOptions,
-        String chineseTopic) {
+        String chineseTopic,
+        String answerText,
+        String chineseAnswerText) {
 
     public Question(String id, int questionNumber, String topic, String questionText,
                     List<QuestionOption> options, Set<String> correctAnswers,
                     List<CommunityVote> communityVotes) {
         this(id, questionNumber, topic, questionText, options, correctAnswers, communityVotes,
-                questionText, options, topic);
+                questionText, options, topic, "", "");
+    }
+
+    public Question(String id, int questionNumber, String topic, String questionText,
+                    List<QuestionOption> options, Set<String> correctAnswers,
+                    List<CommunityVote> communityVotes, String chineseQuestionText,
+                    List<QuestionOption> chineseOptions, String chineseTopic) {
+        this(id, questionNumber, topic, questionText, options, correctAnswers, communityVotes,
+                chineseQuestionText, chineseOptions, chineseTopic, "", "");
     }
 
     public Question {
@@ -33,10 +43,17 @@ public record Question(
         chineseOptions = chineseOptions == null || chineseOptions.isEmpty()
                 ? options : List.copyOf(chineseOptions);
         chineseTopic = chineseTopic == null || chineseTopic.isBlank() ? topic : chineseTopic;
+        answerText = answerText == null ? "" : answerText.trim();
+        chineseAnswerText = chineseAnswerText == null || chineseAnswerText.isBlank()
+                ? answerText : chineseAnswerText.trim();
     }
 
     public boolean multipleChoice() {
         return correctAnswers.size() > 1;
+    }
+
+    public boolean shortAnswer() {
+        return !answerText.isBlank() && options.isEmpty();
     }
 
     public String text(Language language) {
@@ -45,6 +62,10 @@ public record Question(
 
     public List<QuestionOption> localizedOptions(Language language) {
         return language == Language.ZH ? chineseOptions : options;
+    }
+
+    public String answer(Language language) {
+        return language == Language.ZH ? chineseAnswerText : answerText;
     }
 
     public String localizedTopic(Language language) {

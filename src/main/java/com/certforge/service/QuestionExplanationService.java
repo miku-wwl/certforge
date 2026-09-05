@@ -28,9 +28,16 @@ public class QuestionExplanationService {
 
     public QuestionExplanationService(ResourcePatternResolver resourceResolver,
                                       QuestionBankService questionBankService,
-                                      @Value("${certforge.question-explanations:classpath*:/question-bank/AWS_AIP-C01_explanations_*.md}") String sourcePattern) {
+                                      @Value("${certforge.question-explanations:classpath*:/question-bank/SRE_foundations_*.md}") String sourcePattern) {
         MarkdownQuestionExplanationParser parser = new MarkdownQuestionExplanationParser();
         Map<Integer, QuestionExplanation> loaded = new LinkedHashMap<>();
+        if (!questionBankService.all().isEmpty()
+                && questionBankService.all().stream().allMatch(Question::shortAnswer)) {
+            questionBankService.all().forEach(question -> loaded.put(question.questionNumber(),
+                    new QuestionExplanation(question.questionNumber(), question.answerText(), question.answerText())));
+            this.explanations = Map.copyOf(loaded);
+            return;
+        }
         Resource[] resources;
         try {
             resources = resourceResolver.getResources(sourcePattern);

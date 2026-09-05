@@ -37,9 +37,19 @@ public class MarkdownQuestionBankParser {
             Pattern.CASE_INSENSITIVE);
     private static final Pattern MOST_VOTED = Pattern.compile(
             "\\s*\\*{0,2}(?:\\(Most Voted\\)|（最高票）|（得票最高）|\\(最高票\\)|\\(得票最高\\))\\*{0,2}\\s*", Pattern.CASE_INSENSITIVE);
+    private static final Pattern SRE_TOPIC_HEADING = Pattern.compile("^#\\s+(\\d{2})\\s+[—-]\\s+(.+)$");
+    private static final Pattern SRE_PARENT_HEADING = Pattern.compile("^##\\s+Q(\\d+)\\s+[—-]\\s+(.+)$");
+    private static final Pattern SRE_SUB_HEADING = Pattern.compile("^###\\s+Q(\\d+)\\.(\\d+)\\s+[—-]\\s+(.+)$");
 
     public QuestionBankParseResult parse(Reader source) throws IOException {
         List<String> lines = new BufferedReader(source).lines().toList();
+        if (lines.stream().anyMatch(line -> line.trim().startsWith("**问题：**"))) {
+            return parseShortAnswerBank(lines);
+        }
+        return parseChoiceBank(lines);
+    }
+
+    private QuestionBankParseResult parseChoiceBank(List<String> lines) {
         List<QuestionBlock> blocks = new ArrayList<>();
         QuestionBlock current = null;
 
@@ -69,6 +79,106 @@ public class MarkdownQuestionBankParser {
             }
         }
         return new QuestionBankParseResult(questions, failures, blocks.size());
+    }
+
+    private QuestionBankParseResult parseShortAnswerBank(List<String> lines) {
+        List<ShortAnswerBlock> blocks = new ArrayList<>();
+        ShortAnswerBlock current = null;
+        String courseTopic = "SRE 基础知识";
+        String parentTopic = "";
+        int sequence = 0;
+
+        for (String rawLine : lines) {
+            String line = rawLine.trim();
+            Matcher topicMatcher = SRE_TOPIC_HEADING.matcher(line);
+            if (topicMatcher.matches()) {
+                courseTopic = topicMatcher.group(1) + " — " + topicMatcher.group(2).trim();
+                continue;
+            }
+            Matcher parentMatcher = SRE_PARENT_HEADING.matcher(line);
+            if (parentMatcher.matches()) {
+                parentTopic = "Q" + parentMatcher.group(1) + " — " + parentMatcher.group(2).trim();
+                continue;
+            }
+            Matcher subMatcher = SRE_SUB_HEADING.matcher(line);
+            if (subMatcher.matches()) {
+                if (current != null) {
+                    blocks.add(current);
+                }
+                sequence++;
+                current = new ShortAnswerBlock(sequence,
+                        courseTopic + " / " + parentTopic,
+                        subMatcher.group(3).trim());
+                continue;
+            }
+            if (current != null) {
+                current.lines.add(rawLine);
+            }
+        }
+        if (current != null) {
+            blocks.add(current);
+        }
+
+        List<Question> questions = new ArrayList<>();
+        List<ParseFailure> failures = new ArrayList<>();
+        for (ShortAnswerBlock block : blocks) {
+            try {
+                questions.add(parseShortAnswerBlock(block));
+            } catch (ParseException exception) {
+                failures.add(new ParseFailure(block.number, exception.getMessage(), fragment(block.lines)));
+            }
+        }
+        return new QuestionBankParseResult(questions, failures, blocks.size());
+    }
+
+    private Question parseShortAnswerBlock(ShortAnswerBlock block) {
+        List<String> questionLines = new ArrayList<>();
+        List<String> answerLines = new ArrayList<>();
+        boolean readingQuestion = false;
+        boolean readingAnswer = false;
+        for (String rawLine : block.lines) {
+            String line = rawLine.trim();
+            if (line.startsWith("**问题：**")) {
+                readingQuestion = true;
+                readingAnswer = false;
+                String inlineQuestion = line.substring("**问题：**".length()).trim();
+                if (!inlineQuestion.isBlank()) {
+                    questionLines.add(inlineQuestion);
+                }
+                continue;
+            }
+            if (line.startsWith("**参考答案：**")) {
+                readingQuestion = false;
+                readingAnswer = true;
+                String inlineAnswer = line.substring("**参考答案：**".length()).trim();
+                if (!inlineAnswer.isBlank()) {
+                    answerLines.add(inlineAnswer);
+                }
+                continue;
+            }
+            if (line.equals("---")) {
+                continue;
+            }
+            if (readingQuestion && !line.isBlank()) {
+                questionLines.add(line);
+            } else if (readingAnswer && !line.isBlank()) {
+                answerLines.add(line);
+            }
+        }
+        String questionText = String.join("\n", questionLines).trim();
+        String answerText = String.join("\n", answerLines).trim();
+        if (questionText.isBlank()) {
+            throw new ParseException("question text is empty");
+        }
+        if (answerText.isBlank()) {
+            throw new ParseException("reference answer is empty");
+        }
+        String topic = block.topic.isBlank() ? "SRE 基础知识" : block.topic;
+        return new Question("sre-foundations-q-" + block.number, block.number, topic,
+                "【" + block.subtopic + "】\n" + questionText,
+                List.of(), Set.of(), List.of(),
+                "【" + block.subtopic + "】\n" + questionText, List.of(), topic,
+                answerText, answerText);
     }
 
     private Question parseBlock(QuestionBlock block) {
@@ -204,6 +314,11 @@ public class MarkdownQuestionBankParser {
         return body.length() <= 500 ? body : body.substring(0, 500) + "...";
     }
 
+    private static String fragment(List<String> lines) {
+        String body = String.join("\n", lines).trim();
+        return body.length() <= 500 ? body : body.substring(0, 500) + "...";
+    }
+
     private record OptionDraft(String text, boolean mostVoted) {
     }
 
@@ -227,6 +342,19 @@ public class MarkdownQuestionBankParser {
             } catch (NumberFormatException exception) {
                 throw new ParseException("invalid question number at source line " + (headingLine + 1));
             }
+        }
+    }
+
+    private static final class ShortAnswerBlock {
+        private final int number;
+        private final String topic;
+        private final String subtopic;
+        private final List<String> lines = new ArrayList<>();
+
+        private ShortAnswerBlock(int number, String topic, String subtopic) {
+            this.number = number;
+            this.topic = topic;
+            this.subtopic = subtopic;
         }
     }
 

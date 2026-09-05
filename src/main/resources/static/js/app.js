@@ -74,7 +74,8 @@
     function buildQuestionText(card) {
         const question = card && card.querySelector('.question-text');
         const options = card ? Array.from(card.querySelectorAll('.option-list .option-row')) : [];
-        if (!question || !options.length) return '';
+        if (!question) return '';
+        if (!options.length) return question.textContent.trim();
         const optionLines = options.map(function (option) {
             const label = option.querySelector('.option-label');
             const copy = option.querySelector('.option-copy');

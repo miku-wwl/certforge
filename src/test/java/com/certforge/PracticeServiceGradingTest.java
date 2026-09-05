@@ -31,6 +31,14 @@ class PracticeServiceGradingTest {
         assertFalse(service.grade(question, Set.of("A", "D", "F", "G")));
     }
 
+    @Test
+    void doesNotAutoGradeShortAnswers() {
+        Question question = new Question("short", 1, "SRE", "question", List.of(), Set.of(), List.of(),
+                "question", List.of(), "SRE", "reference answer", "reference answer");
+        assertTrue(question.shortAnswer());
+        assertFalse(service.grade(question, Set.of()));
+    }
+
     private Question question(Set<String> answers) {
         return new Question("test", 1, "Topic", "text", List.of(
                 new QuestionOption("A", "A", false), new QuestionOption("B", "B", false),
